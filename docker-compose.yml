@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      APP_NAME: ${APP_NAME:?set APP_NAME in .env}
+      DEBUG: ${DEBUG:?set DEBUG in .env}
+      LOG_LEVEL: ${LOG_LEVEL:?set LOG_LEVEL in .env}
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?set JWT_SECRET_KEY in .env}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:?set JWT_ALGORITHM in .env}
+      ACCESS_TOKEN_TTL_MINUTES: ${ACCESS_TOKEN_TTL_MINUTES:?set ACCESS_TOKEN_TTL_MINUTES in .env}
+      REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:?set REFRESH_TOKEN_TTL_DAYS in .env}
+      MEDIA_ROOT: ${MEDIA_ROOT:?set MEDIA_ROOT in .env}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    volumes:
+      - media_data:/data/media
+
+volumes:
+  db_data:
+  media_data:

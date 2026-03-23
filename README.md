@@ -1,0 +1,24 @@
+## Установка
+
+### Требования
+- Docker + Docker Compose (v2)
+
+### Запуск тестового сервера (dev)
+1) Создать `.env` в корне репозитория:
+   - `cp .env.example .env`
+2) Поднять сервисы:
+   - `docker compose up --build`
+3) Проверка:
+   - `GET http://localhost:8000/health` → `{"status":"ok"}`
+   - Swagger/OpenAPI: `http://localhost:8000/docs`
+
+### Важные параметры `.env`
+- `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` — учётка Postgres (контейнер `db`).
+- `DATABASE_URL` — строка подключения для API (host должен быть `db`).
+- `JWT_SECRET_KEY`, `JWT_ALGORITHM` — подпись и алгоритм JWT.
+- `ACCESS_TOKEN_TTL_MINUTES`, `REFRESH_TOKEN_TTL_DAYS` — TTL токенов.
+- `MEDIA_ROOT` — директория для локального хранения медиа (в т.ч. голосовых сообщений) внутри контейнера API.
+
+### Порты (dev)
+- API: `localhost:8000`
+- Postgres: `localhost:5432`

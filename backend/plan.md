@@ -87,7 +87,7 @@
 - [ ] Добавить минимальный набор зависимостей: `uvicorn`, `pydantic-settings`, `sqlalchemy[asyncio]`, `asyncpg`, `alembic`, `python-jose`/`pyjwt`, `passlib[bcrypt]` (или аналог).
 - [ ] Вынести сборку приложения из `backend/app/main.py` в фабрику (например, `create_app()`), оставить `main.py` тонким.
 - [ ] Добавить `core/config.py` (настройки через env), `core/logging.py`.
-- [ ] Добавить `docker-compose.yml` (API + Postgres) и базовые env (`backend/.env.example`).
+- [ ] Добавить `docker-compose.yml` в корне репозитория (API + Postgres) и базовые env (`.env.example`).
 - [ ] Добавить локальное файловое хранилище для ГС: volume + настройка пути в env (например, `MEDIA_ROOT=/data/media`).
 
 **DoD**
