@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "HR Connect",
+    "slug": "hr-connect",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": ["**/*"]
+  }
+}
