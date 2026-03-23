@@ -89,9 +89,14 @@ const styles = StyleSheet.create({
     flex: 1
   },
   scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
     padding: 24
   },
   content: {
+    width: '100%',
+    maxWidth: 402,
+    alignSelf: 'center',
     borderRadius: 20,
     gap: 18,
     padding: 24
