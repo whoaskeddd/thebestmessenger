@@ -3,3 +3,10 @@
 .env
 __pycache__/
 *.pyc
+
+#FRONTEND
+
+node_modules/
+frontend/node_modules/
+.idea/
+frontend/.expo/

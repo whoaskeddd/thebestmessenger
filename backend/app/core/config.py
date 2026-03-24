@@ -28,9 +28,18 @@ class Settings(BaseSettings):
     )
 
     media_root: str = Field(default="/data/media", validation_alias="MEDIA_ROOT")
+    cors_allow_origins: list[str] = Field(
+        default_factory=lambda: [
+            "http://localhost:8081",
+            "http://localhost:19006",
+            "http://127.0.0.1:19006",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ],
+        validation_alias="CORS_ALLOW_ORIGINS",
+    )
 
 
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-
