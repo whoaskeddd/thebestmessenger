@@ -83,12 +83,13 @@
 Нотация статусов: `[ ]` — не начато, `[~]` — в работе, `[x]` — готово.
 
 ### M1. Базовая инфраструктура проекта
-- [ ] Привести `requires-python` к **Python 3.12**.
-- [ ] Добавить минимальный набор зависимостей: `uvicorn`, `pydantic-settings`, `sqlalchemy[asyncio]`, `asyncpg`, `alembic`, `python-jose`/`pyjwt`, `passlib[bcrypt]` (или аналог).
-- [ ] Вынести сборку приложения из `backend/app/main.py` в фабрику (например, `create_app()`), оставить `main.py` тонким.
-- [ ] Добавить `core/config.py` (настройки через env), `core/logging.py`.
-- [ ] Добавить `docker-compose.yml` в корне репозитория (API + Postgres) и базовые env (`.env.example`).
-- [ ] Добавить локальное файловое хранилище для ГС: volume + настройка пути в env (например, `MEDIA_ROOT=/data/media`).
+- [x] Привести `requires-python` к **Python 3.12**.
+- [x] Добавить минимальный набор зависимостей: `uvicorn`, `pydantic-settings`, `sqlalchemy[asyncio]`, `asyncpg`, `alembic`, `python-jose`/`pyjwt`, `passlib[bcrypt]` (или аналог).
+- [x] Вынести сборку приложения из `backend/app/main.py` в фабрику (например, `create_app()`), оставить `main.py` тонким.
+- [x] Добавить `core/config.py` (настройки через env), `core/logging.py`.
+- [x] Добавить `docker-compose.yml` в корне репозитория (API + Postgres) и базовые env (`.env.example`).
+- [x] Добавить локальное файловое хранилище для ГС: volume + настройка пути в env (например, `MEDIA_ROOT=/data/media`).
+- [x] Зафиксировать параметры тестового запуска в корневом `README.md` (секция “Установка”).
 
 **DoD**
 - Проект запускается локально, есть health endpoint.
@@ -105,23 +106,24 @@
 ---
 
 ### M2. База данных + миграции + слой репозиториев (каркас)
-- [ ] Добавить подключение к БД в `core/db.py` (async engine + `AsyncSession` factory).
-- [ ] Настроить Alembic под структуру `backend/app/infrastructure/**/models.py`.
-- [ ] Создать базовый паттерн репозитория: интерфейс в `domain/.../repositories.py`, реализация в `infrastructure/.../repositories.py`, DI‑провайдер в `api/.../dependencies.py`.
-- [ ] Добавить первую миграцию “пустая схема” (только проверка пайплайна миграций).
+- [x] Добавить подключение к БД в `core/db.py` (async engine + `AsyncSession` factory).
+- [x] Настроить Alembic под структуру `backend/app/infrastructure/**/models.py`.
+- [x] Создать базовый паттерн репозитория: интерфейс в `domain/.../repositories.py`, реализация в `infrastructure/.../repositories.py`, DI‑провайдер в `api/.../dependencies.py`.
+- [x] Добавить первую миграцию “пустая схема” (только проверка пайплайна миграций).
 
 **DoD**
 - Миграции применяются/откатываются в dev.
 - Есть пример рабочего репозитория (например, для `auth` или `employees`) с тестом на уровне unit (fake repo) или интеграционным (если БД поднята).
 
 **Валидация**
-- `uv run alembic upgrade head` (после настройки)
+- `uv run alembic -c alembic.ini upgrade head --sql` (без поднятой БД, проверка миграций)
+- `uv run alembic -c alembic.ini upgrade head` (с поднятой БД через `docker compose up`)
 
 ---
 
 ### M3. Auth + RBAC (MVP)
-- [ ] Слайс `auth`: модели `users`, `roles`, `user_roles` (если M2M).
-- [ ] Эндпоинты: login, refresh (если нужен), me, (опционально) admin create user.
+- [~] Слайс `auth`: модели `users` + refresh sessions (роли как поле пользователя на MVP).
+- [~] Эндпоинты: register, login, refresh, me.
 - [ ] Refresh: хранение хешей refresh токенов + ротация; `token_version` для инвалидации.
 - [ ] Хеширование паролей, правила сложности (минимум), lockout/ratelimit (минимум: базовая защита на уровне приложения).
 - [ ] RBAC: dependency `require_role(...)` / `require_permission(...)` на уровне `api`.

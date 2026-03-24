@@ -12,6 +12,11 @@
    - `GET http://localhost:8000/health` → `{"status":"ok"}`
    - Swagger/OpenAPI: `http://localhost:8000/docs`
 
+### Миграции БД (alembic)
+Команды запускай внутри контейнера API (чтобы `DATABASE_URL` с host `db` работал):
+- Применить миграции: `docker compose exec api uv run alembic -c alembic.ini upgrade head`
+- Создать миграцию (autogenerate): `docker compose exec api uv run alembic -c alembic.ini revision --autogenerate -m "message"`
+
 ### Важные параметры `.env`
 - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` — учётка Postgres (контейнер `db`).
 - `DATABASE_URL` — строка подключения для API (host должен быть `db`).
