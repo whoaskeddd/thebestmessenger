@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import DbSessionDep
@@ -45,6 +48,9 @@ async def register(payload: RegisterRequest, session: DbSessionDep) -> TokenPair
     except EmailAlreadyExists as exc:
         await session.rollback()
         raise HTTPException(status_code=409, detail="email already exists") from exc
+    except IntegrityError as exc:
+        await session.rollback()
+        raise HTTPException(status_code=409, detail="email already exists") from exc
 
 
 @router.post("/login", response_model=TokenPairResponse)
@@ -55,6 +61,7 @@ async def login(payload: LoginRequest, session: DbSessionDep) -> TokenPairRespon
         await session.commit()
         return TokenPairResponse(**tokens)
     except (InvalidCredentials, InactiveUser) as exc:
+        await asyncio.sleep(0.35)
         await session.rollback()
         raise HTTPException(status_code=401, detail="invalid credentials") from exc
 
@@ -71,7 +78,13 @@ async def refresh(payload: RefreshRequest, session: DbSessionDep) -> TokenPairRe
         raise HTTPException(status_code=401, detail="invalid refresh token") from exc
 
 
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(payload: RefreshRequest, session: DbSessionDep) -> None:
+    service = _service(session)
+    await service.logout(refresh_token=payload.refresh_token)
+    await session.commit()
+
+
 @router.get("/me", response_model=MeResponse)
 async def me(user=Depends(get_current_user)) -> MeResponse:
     return MeResponse(id=str(user.id), email=user.email, role=user.role)
-

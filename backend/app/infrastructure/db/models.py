@@ -9,3 +9,7 @@ from __future__ import annotations
 
 from app.infrastructure.users import models as _users_models  # noqa: F401
 from app.infrastructure.auth import models as _auth_models  # noqa: F401
+from app.infrastructure.employees import models as _employees_models  # noqa: F401
+from app.infrastructure.leave_requests import models as _leave_requests_models  # noqa: F401
+from app.infrastructure.announcements import models as _announcements_models  # noqa: F401
+from app.infrastructure.hr_tasks import models as _hr_tasks_models  # noqa: F401

@@ -113,3 +113,9 @@ class AuthService:
 
         return {"access_token": access, "refresh_token": refresh_plain}
 
+    async def logout(self, *, refresh_token: str) -> None:
+        token_hash = hash_refresh_token(refresh_token)
+        session = await self._refresh_sessions.get_by_token_hash(token_hash)
+        if session is None:
+            return
+        await self._refresh_sessions.revoke(session.id, revoked_at=_utcnow())

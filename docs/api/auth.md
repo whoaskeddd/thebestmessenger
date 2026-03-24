@@ -76,6 +76,21 @@ Responses:
 
 ---
 
+### POST `/auth/logout`
+Revokes a refresh token (logout).
+
+Request:
+```json
+{
+  "refresh_token": "string"
+}
+```
+
+Responses:
+- `204` (no content)
+
+---
+
 ### GET `/auth/me`
 Returns current user data.
 
@@ -89,4 +104,3 @@ Responses:
 ## Notes (MVP)
 - Role is stored as `users.role` string; values in MVP: `admin`, `hr`, `employee`.
 - Refresh tokens are rotated; client must store the latest `refresh_token`.
-
