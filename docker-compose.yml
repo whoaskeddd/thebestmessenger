@@ -62,6 +62,16 @@ services:
       ]
     restart: "no"
 
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "3000:80"
+
 volumes:
   db_data:
   media_data:
