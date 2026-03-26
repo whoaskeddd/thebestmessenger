@@ -5,6 +5,26 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "assetBundlePatterns": ["**/*"]
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.thebestmessenger.hrconnect"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    }
   }
 }
