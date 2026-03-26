@@ -13,3 +13,4 @@ from app.infrastructure.employees import models as _employees_models  # noqa: F4
 from app.infrastructure.leave_requests import models as _leave_requests_models  # noqa: F401
 from app.infrastructure.announcements import models as _announcements_models  # noqa: F401
 from app.infrastructure.hr_tasks import models as _hr_tasks_models  # noqa: F401
+from app.infrastructure.messenger import models as _messenger_models  # noqa: F401
