@@ -2,7 +2,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 
-import { AppBackground, InputField, Label, LinkText, PrimaryButton, SubTitle, Title } from '../components/ui';
+import { InputField, LinkText, PrimaryButton } from '../components/ui';
+import { AppScreen } from '../components/layout/AppScreen';
+import { colors } from '../theme/colors';
+import { fontFamilies, typography } from '../theme/typography';
 import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -31,50 +34,45 @@ export const LoginScreen = (_props: Props) => {
   };
 
   return (
-    <AppBackground>
+    <AppScreen>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.page}>
         <View style={styles.content}>
-          <View>
-            <Title>Вход в HR Connect</Title>
-            <SubTitle>
-              Управляйте задачами отдела кадров и общайтесь с командой в одном приложении.
-            </SubTitle>
+          <View style={styles.header}>
+            <Text style={styles.title}>HR Connect</Text>
+            <Text style={styles.subtitle}>Вход в систему отдела кадров</Text>
           </View>
 
-          <View style={styles.form}>
-            <View>
-              <Label>Рабочий email</Label>
-              <InputField
-                value={email}
-                onChangeText={setEmail}
-                placeholder="name@company.com"
-                keyboardType="email-address"
-              />
-            </View>
-
-            <View>
-              <Label>Пароль</Label>
-              <InputField
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••••"
-                secureTextEntry
-              />
-            </View>
-
-            <LinkText title="Забыли пароль?" onPress={() => Alert.alert('MVP', 'Восстановление пароля будет добавлено позже')} />
+          <View style={styles.formCard}>
+            <InputField
+              value={email}
+              onChangeText={setEmail}
+              placeholder="Логин"
+              keyboardType="email-address"
+            />
+            <InputField
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Пароль"
+              secureTextEntry
+            />
+            <Text style={styles.hint}>JWT-обновление выполняется автоматически</Text>
           </View>
 
-          <PrimaryButton title="Войти" onPress={onSubmit} danger={false} disabled={isLoading} />
+          <PrimaryButton title="Войти" onPress={onSubmit} disabled={isLoading} />
 
-          {isLoading ? <ActivityIndicator color="#4D6BFF" /> : null}
+          {isLoading ? <ActivityIndicator color={colors.primary} /> : null}
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Доступ выдаёт HR-отдел. Обратитесь к HR за логином и паролем.</Text>
+            <LinkText
+              bold={false}
+              title="Забыли пароль?"
+              onPress={() => Alert.alert('MVP', 'Восстановление пароля будет добавлено позже')}
+              color={colors.textSecondary}
+            />
           </View>
         </View>
       </KeyboardAvoidingView>
-    </AppBackground>
+    </AppScreen>
   );
 };
 
@@ -84,22 +82,41 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 150,
-    paddingBottom: 28,
-    gap: 24,
+    paddingHorizontal: 20,
+    paddingTop: 120,
+    paddingBottom: 24,
+    gap: 20,
   },
-  form: {
-    gap: 14,
+  header: {
+    gap: 6,
+  },
+  title: {
+    ...typography.title,
+    fontFamily: fontFamilies.primary,
+    color: colors.textPrimary,
+  },
+  subtitle: {
+    ...typography.body,
+    fontFamily: fontFamilies.primary,
+    color: colors.textSecondary,
+  },
+  formCard: {
+    borderRadius: 16,
+    backgroundColor: colors.cardStrong,
+    padding: 16,
+    gap: 12,
+    shadowColor: '#1B3A28',
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+  },
+  hint: {
+    ...typography.caption,
+    fontFamily: fontFamilies.primary,
+    color: colors.textSecondary,
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  footerText: {
-    color: '#6A7591',
-    fontSize: 14,
+    alignItems: 'center',
   },
 });

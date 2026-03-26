@@ -1,29 +1,11 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-export const colors = {
-  textPrimary: '#1A1A1A',
-  textSecondary: '#6B7280',
-  textMuted: '#9CA3AF',
-  danger: '#FF6B6B',
-  blue: '#4D6BFF',
-  white: '#FFFFFF',
-  border: '#E5E7EB',
-  borderBlue: '#DCE7F7',
-  soft: '#F6F7F8',
-  bg: '#F8FBFF',
-};
+import { colors } from '../theme/colors';
+import { fontFamilies, typography } from '../theme/typography';
 
 export const AppBackground = ({ children }: { children: ReactNode }) => (
-  <LinearGradient
-    colors={['#FFFFFF', '#EEF4FF']}
-    start={{ x: 0.1, y: 0 }}
-    end={{ x: 1, y: 1 }}
-    style={styles.page}
-  >
-    {children}
-  </LinearGradient>
+  <View style={styles.page}>{children}</View>
 );
 
 export const Title = ({ children }: { children: ReactNode }) => (
@@ -55,7 +37,7 @@ export const InputField = ({
     <TextInput
       style={styles.input}
       placeholder={placeholder}
-      placeholderTextColor="#98A4BE"
+      placeholderTextColor={colors.textMuted}
       value={value}
       onChangeText={onChangeText}
       autoCapitalize="none"
@@ -68,7 +50,7 @@ export const InputField = ({
 export const PrimaryButton = ({
   title,
   onPress,
-  danger = true,
+  danger = false,
   disabled,
 }: {
   title: string;
@@ -79,7 +61,7 @@ export const PrimaryButton = ({
   <Pressable
     style={({ pressed }) => [
       styles.button,
-      { backgroundColor: danger ? colors.danger : colors.blue },
+      { backgroundColor: danger ? colors.danger : colors.primary },
       pressed && styles.pressed,
       disabled && styles.disabled,
     ]}
@@ -93,7 +75,7 @@ export const PrimaryButton = ({
 export const LinkText = ({
   title,
   onPress,
-  color = colors.blue,
+  color = colors.actionBlue,
   bold = true,
 }: {
   title: string;
@@ -109,49 +91,51 @@ export const LinkText = ({
 const styles = StyleSheet.create({
   page: {
     flex: 1,
+    backgroundColor: colors.pageBg,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#182033',
-    letterSpacing: -0.4,
+    ...typography.title,
+    fontFamily: fontFamilies.primary,
+    color: colors.textPrimary,
   },
   subtitle: {
     marginTop: 8,
-    color: '#5E6A85',
-    fontSize: 14,
-    lineHeight: 20,
+    ...typography.body,
+    fontFamily: fontFamilies.primary,
+    color: colors.textSecondary,
   },
   label: {
-    color: '#2A3552',
-    fontSize: 13,
+    ...typography.caption,
+    fontFamily: fontFamilies.primary,
+    color: colors.textSecondary,
     fontWeight: '600',
     marginBottom: 8,
   },
   inputWrap: {
     borderWidth: 1,
-    borderColor: colors.borderBlue,
-    borderRadius: 14,
-    backgroundColor: colors.white,
+    borderColor: colors.border,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
     height: 52,
     justifyContent: 'center',
     paddingHorizontal: 14,
   },
   input: {
-    color: '#1E293B',
-    fontSize: 14,
+    ...typography.body,
+    fontFamily: fontFamilies.primary,
+    color: colors.textPrimary,
     paddingVertical: 0,
   },
   button: {
-    height: 54,
+    height: 56,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
   buttonText: {
-    color: colors.white,
-    fontWeight: '700',
-    fontSize: 16,
+    ...typography.button,
+    fontFamily: fontFamilies.primary,
+    color: colors.surface,
   },
   pressed: {
     opacity: 0.9,
@@ -160,6 +144,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   link: {
-    fontSize: 13,
+    ...typography.caption,
+    fontFamily: fontFamilies.primary,
   },
 });

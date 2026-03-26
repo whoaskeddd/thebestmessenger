@@ -3,13 +3,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { modulesApi } from '../api/modules';
+import { AppScreen } from '../components/layout/AppScreen';
 import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
+import { colors } from '../theme/colors';
+import { fontFamilies, typography } from '../theme/typography';
 import type { Department, Employee } from '../types/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EmployeeCard'>;
 
-export const EmployeeCardScreen = ({ route }: Props) => {
+export const EmployeeCardScreen = ({ route, navigation }: Props) => {
   const { user } = useAuth();
   const isHr = user?.role === 'hr' || user?.role === 'admin';
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -89,127 +92,145 @@ export const EmployeeCardScreen = ({ route }: Props) => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.wrap}>
-      <Text style={styles.title}>Карточка сотрудника</Text>
-
-      {!isHr ? (
-        <View style={styles.infoCard}>
-          <Text style={styles.meta}>Раздел доступен только для HR</Text>
-        </View>
-      ) : null}
-
-      {isHr && isLoading ? <ActivityIndicator color="#FF6B6B" /> : null}
-
-      {isHr && !isLoading && !employee ? (
-        <View style={styles.infoCard}>
-          <Text style={styles.meta}>Сотрудники пока не добавлены</Text>
-        </View>
-      ) : null}
-
-      {isHr && employee ? (
-        <>
-          <View style={styles.profileCard}>
-            <Text style={styles.name}>{employee.first_name} {employee.last_name}</Text>
-            <Text style={styles.role}>{employee.position ?? 'Должность не указана'}</Text>
-            <Text style={styles.meta}>{employee.work_email ?? 'Email не указан'}</Text>
-            <Text style={styles.meta}>{employee.phone ?? 'Телефон не указан'}</Text>
-          </View>
-
-          <View style={styles.infoCard}>
-            <Text style={styles.meta}>Отделы: {(employee.departments ?? []).map((dep) => dep.name).join(', ') || 'Не назначены'}</Text>
-            <Text style={styles.meta}>Статус: {employee.is_active === false ? 'Неактивен' : 'Активен'}</Text>
-            <Pressable style={styles.deptEditBtn} onPress={() => setDeptPickerOpen(true)}>
-              <Text style={styles.deptEditText}>Изменить отделы</Text>
-            </Pressable>
-          </View>
-
-          <Pressable style={[styles.action, { backgroundColor: '#FF6B6B' }]}>
-            <Text style={styles.actionText}>Написать</Text>
+    <AppScreen>
+      <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
+        <View style={styles.headRow}>
+          <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Text style={styles.backText}>‹</Text>
           </Pressable>
-        </>
-      ) : null}
+          <Text style={styles.title}>Карточка сотрудника</Text>
+          <View style={{ width: 36 }} />
+        </View>
 
-      <Modal visible={isDeptPickerOpen} transparent animationType="fade" onRequestClose={closeDeptPicker}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Отделы</Text>
-              <Pressable onPress={closeDeptPicker} style={styles.modalClose}>
-                <Text style={styles.modalCloseText}>Закрыть</Text>
+        {!isHr ? (
+          <View style={styles.infoCard}>
+            <Text style={styles.meta}>Раздел доступен только для HR</Text>
+          </View>
+        ) : null}
+
+        {isHr && isLoading ? <ActivityIndicator color={colors.primary} /> : null}
+
+        {isHr && !isLoading && !employee ? (
+          <View style={styles.infoCard}>
+            <Text style={styles.meta}>Сотрудники пока не добавлены</Text>
+          </View>
+        ) : null}
+
+        {isHr && employee ? (
+          <>
+            <View style={styles.profileCard}>
+              <Text style={styles.name}>{employee.first_name} {employee.last_name}</Text>
+              <Text style={styles.role}>{employee.position ?? 'HR Business Partner'}</Text>
+              <Text style={styles.meta}>{employee.work_email ?? 'ivanov@company.com'}</Text>
+              <Text style={styles.meta}>{employee.phone ?? '+7 (900) 000-00-01'}</Text>
+            </View>
+
+            <View style={styles.infoCard}>
+              <Text style={styles.meta}>Отдел: {(employee.departments ?? []).map((dep) => dep.name).join(', ') || 'Не назначен'}</Text>
+              <Text style={styles.meta}>Руководитель: —</Text>
+              <Pressable style={styles.deptEditLink} onPress={() => setDeptPickerOpen(true)}>
+                <Text style={styles.deptEditText}>Изменить отделы</Text>
               </Pressable>
             </View>
 
-            <TextInput
-              style={styles.modalSearch}
-              value={deptQuery}
-              onChangeText={setDeptQuery}
-              placeholder="Поиск отдела"
-              placeholderTextColor="#9CA3AF"
-              autoCapitalize="none"
-            />
+            <View style={styles.actionsRow}>
+              <Pressable
+                style={[styles.action, styles.actionPrimary]}
+                onPress={() => navigation.navigate('ChatRoom', { chatId: employee.user_id ?? employee.id, chatName: `${employee.first_name} ${employee.last_name}` })}
+              >
+                <Text style={[styles.actionText, styles.actionTextPrimary]}>Написать</Text>
+              </Pressable>
+              <Pressable style={[styles.action, styles.actionOutline]} onPress={() => Alert.alert('MVP', 'Звонки появятся позже')}>
+                <Text style={[styles.actionText, styles.actionTextOutline]}>Позвонить</Text>
+              </Pressable>
+            </View>
+          </>
+        ) : null}
 
-            <FlatList
-              data={filteredDepartments}
-              keyExtractor={(item) => item.id}
-              keyboardShouldPersistTaps="handled"
-              renderItem={({ item }) => {
-                const checked = selectedDepartmentIds.includes(item.id);
-                return (
-                  <Pressable style={[styles.deptRow, checked && styles.deptRowChecked]} onPress={() => toggleDepartment(item.id)}>
-                    <Text style={styles.deptName}>{item.name}</Text>
-                    <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
-                      <Text style={styles.checkboxText}>{checked ? '✓' : ''}</Text>
-                    </View>
-                  </Pressable>
-                );
-              }}
-              ListEmptyComponent={<Text style={styles.meta}>Отделы не найдены</Text>}
-            />
+        <Modal visible={isDeptPickerOpen} transparent animationType="fade" onRequestClose={closeDeptPicker}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Отделы</Text>
+                <Pressable onPress={closeDeptPicker} style={styles.modalClose}>
+                  <Text style={styles.modalCloseText}>Закрыть</Text>
+                </Pressable>
+              </View>
 
-            <Pressable style={styles.modalDone} onPress={() => void saveDepartments()} disabled={isSaving}>
-              <Text style={styles.modalDoneText}>{isSaving ? 'Сохраняю...' : 'Сохранить'}</Text>
-            </Pressable>
+              <TextInput
+                style={styles.modalSearch}
+                value={deptQuery}
+                onChangeText={setDeptQuery}
+                placeholder="Поиск отдела"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="none"
+              />
+
+              <FlatList
+                data={filteredDepartments}
+                keyExtractor={(item) => item.id}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => {
+                  const checked = selectedDepartmentIds.includes(item.id);
+                  return (
+                    <Pressable style={[styles.deptRow, checked && styles.deptRowChecked]} onPress={() => toggleDepartment(item.id)}>
+                      <Text style={styles.deptName}>{item.name}</Text>
+                      <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+                        <Text style={styles.checkboxText}>{checked ? '✓' : ''}</Text>
+                      </View>
+                    </Pressable>
+                  );
+                }}
+                ListEmptyComponent={<Text style={styles.meta}>Отделы не найдены</Text>}
+              />
+
+              <Pressable style={styles.modalDone} onPress={() => void saveDepartments()} disabled={isSaving}>
+                <Text style={styles.modalDoneText}>{isSaving ? 'Сохраняю...' : 'Сохранить'}</Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
-      </Modal>
-    </ScrollView>
+        </Modal>
+      </ScrollView>
+    </AppScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  wrap: { paddingTop: 24, paddingHorizontal: 20, paddingBottom: 24, gap: 16, backgroundColor: '#FFFFFF' },
-  title: { color: '#1A1A1A', fontSize: 32, fontWeight: '700' },
-  profileCard: { borderRadius: 18, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#FFFFFF', padding: 16, gap: 8 },
-  infoCard: { borderRadius: 16, backgroundColor: '#F6F7F8', padding: 16, gap: 8 },
-  name: { color: '#1A1A1A', fontSize: 18, fontWeight: '700' },
-  role: { color: '#6B7280', fontSize: 14 },
-  meta: { color: '#374151', fontSize: 13 },
-  deptEditBtn: {
-    marginTop: 6,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#EEF2FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deptEditText: { color: '#4338CA', fontWeight: '700', fontSize: 12 },
-  action: { height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  actionText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  wrap: { paddingTop: 16, paddingHorizontal: 20, paddingBottom: 32, gap: 16, backgroundColor: colors.pageBg },
+  headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  backText: { color: colors.textPrimary, fontFamily: fontFamilies.primary, fontSize: 22, marginTop: -2 },
+  title: { ...typography.title, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontSize: 24 },
+  profileCard: { borderRadius: 16, backgroundColor: colors.cardSoft, padding: 14, gap: 6 },
+  infoCard: { borderRadius: 16, backgroundColor: colors.primarySoft, padding: 14, gap: 6 },
+  name: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '700' },
+  role: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textSecondary, fontWeight: '600' },
+  meta: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textSecondary },
+  deptEditLink: { marginTop: 6, alignSelf: 'flex-start' },
+  deptEditText: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.actionBlue, fontWeight: '700' },
+  actionsRow: { flexDirection: 'row', gap: 12 },
+  action: { flex: 1, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  actionPrimary: { backgroundColor: colors.primary },
+  actionOutline: { backgroundColor: colors.pageBg, borderWidth: 1, borderColor: colors.border },
+  actionText: { ...typography.button, fontFamily: fontFamilies.primary },
+  actionTextPrimary: { color: colors.surface },
+  actionTextOutline: { color: colors.textPrimary },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', padding: 20, justifyContent: 'center' },
-  modalCard: { maxHeight: '80%', borderRadius: 16, backgroundColor: '#FFFFFF', padding: 14, gap: 10 },
+  modalCard: { maxHeight: '80%', borderRadius: 16, backgroundColor: colors.surface, padding: 14, gap: 10 },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  modalTitle: { color: '#111827', fontWeight: '800', fontSize: 16 },
-  modalClose: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, backgroundColor: '#F3F4F6' },
-  modalCloseText: { color: '#111827', fontWeight: '700', fontSize: 12 },
+  modalTitle: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '800' },
+  modalClose: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, backgroundColor: colors.primarySoft },
+  modalCloseText: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '700' },
   modalSearch: {
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
     paddingHorizontal: 12,
-    color: '#111827',
+    color: colors.textPrimary,
+    fontFamily: fontFamilies.primary,
   },
   deptRow: {
     flexDirection: 'row',
@@ -218,23 +239,23 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 10,
     borderRadius: 12,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.primarySoft,
     marginBottom: 8,
   },
-  deptRowChecked: { backgroundColor: '#EEF2FF' },
-  deptName: { color: '#111827', fontWeight: '800' },
+  deptRowChecked: { backgroundColor: colors.cardSoft },
+  deptName: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '800' },
   checkbox: {
     width: 22,
     height: 22,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#CBD5E1',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
-  checkboxChecked: { borderColor: '#4F46E5', backgroundColor: '#4F46E5' },
-  checkboxText: { color: '#FFFFFF', fontWeight: '900', fontSize: 14, marginTop: -2 },
-  modalDone: { height: 44, borderRadius: 12, backgroundColor: '#4F46E5', alignItems: 'center', justifyContent: 'center' },
-  modalDoneText: { color: '#FFFFFF', fontWeight: '800' },
+  checkboxChecked: { borderColor: colors.primary, backgroundColor: colors.primary },
+  checkboxText: { color: colors.surface, fontWeight: '900', fontSize: 14, marginTop: -2 },
+  modalDone: { height: 44, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  modalDoneText: { ...typography.button, fontFamily: fontFamilies.primary, color: colors.surface, fontWeight: '800' },
 });

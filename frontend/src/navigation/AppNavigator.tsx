@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View } from 'react-native';
 
 import { useAuth } from '../context/AuthContext';
+import { colors } from '../theme/colors';
 import { ChatRoomScreen } from '../screens/ChatRoomScreen';
 import { ChatsScreen } from '../screens/ChatsScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
@@ -21,7 +22,7 @@ export const AppNavigator = () => {
   if (!isReady) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color="#FF6B6B" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }

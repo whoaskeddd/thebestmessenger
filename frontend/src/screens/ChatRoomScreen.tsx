@@ -9,9 +9,14 @@ import {
   Text,
   TextInput,
   View,
+  Alert,
 } from 'react-native';
 
+import { AppScreen } from '../components/layout/AppScreen';
+import { BottomPillNav } from '../components/navigation/BottomPillNav';
 import type { RootStackParamList } from '../navigation/types';
+import { colors } from '../theme/colors';
+import { fontFamilies, typography } from '../theme/typography';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChatRoom'>;
 
@@ -46,75 +51,91 @@ export const ChatRoomScreen = ({ route, navigation }: Props) => {
   const sorted = useMemo(() => messages, [messages]);
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.wrap}>
-      <View style={styles.head}>
-        <View style={styles.left}>
-          <Pressable style={styles.circleBtn} onPress={() => navigation.goBack()}><Text style={styles.circleText}>‹</Text></Pressable>
-          <View style={styles.avatar} />
-          <View>
-            <Text style={styles.name}>{chatName}</Text>
-            <Text style={styles.role}>Online</Text>
-          </View>
+    <AppScreen edges={['top', 'bottom']}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.page}>
+        <View style={styles.head}>
+          <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Text style={styles.backText}>‹</Text>
+          </Pressable>
+          <Text style={styles.headTitle}>{chatName}</Text>
+          <Pressable style={styles.infoBtn} onPress={() => Alert.alert('MVP', 'Информация о чате появится позже')}>
+            <Text style={styles.infoText}>ⓘ</Text>
+          </Pressable>
         </View>
-      </View>
 
-      <ScrollView contentContainerStyle={styles.messages}>
-        {sorted.map((message) => (
-          <View key={message.id} style={message.fromMe ? styles.outWrap : styles.inWrap}>
-            <View style={message.fromMe ? styles.outBubble : styles.inBubble}>
-              <Text style={message.fromMe ? styles.outText : styles.inText}>{message.text}</Text>
+        <ScrollView contentContainerStyle={styles.messages} keyboardShouldPersistTaps="handled">
+          {sorted.map((message) => (
+            <View key={message.id} style={message.fromMe ? styles.outWrap : styles.inWrap}>
+              <View style={message.fromMe ? styles.outBubble : styles.inBubble}>
+                <Text style={message.fromMe ? styles.outText : styles.inText}>{message.text}</Text>
+              </View>
+              <Text style={styles.time}>{message.time}</Text>
             </View>
-            <Text style={styles.time}>{message.time}</Text>
-          </View>
-        ))}
-      </ScrollView>
+          ))}
+        </ScrollView>
 
-      <View style={styles.composer}>
-        <TextInput
-          style={styles.input}
-          value={draft}
-          onChangeText={setDraft}
-          placeholder="Сообщение..."
-          placeholderTextColor="#9CA3AF"
-          onSubmitEditing={send}
-        />
-        <Pressable style={[styles.circleBtn, styles.sendBtn]} onPress={send}>
-          <Text style={styles.sendText}>➤</Text>
-        </Pressable>
-      </View>
-    </KeyboardAvoidingView>
+        <View style={styles.composer}>
+          <Text style={styles.pencil}>✎</Text>
+          <TextInput
+            style={styles.input}
+            value={draft}
+            onChangeText={setDraft}
+            placeholder="Сообщение..."
+            placeholderTextColor={colors.textMuted}
+            onSubmitEditing={send}
+          />
+          <Pressable style={[styles.circleBtn, styles.attachBtn]} onPress={() => Alert.alert('MVP', 'Вложения появятся позже')}>
+            <Text style={styles.circleText}>➤</Text>
+          </Pressable>
+          <Pressable style={[styles.circleBtn, styles.sendBtn]} onPress={send}>
+            <Text style={styles.sendText}>↑</Text>
+          </Pressable>
+        </View>
+
+        <BottomPillNav activeRoute="Chats" />
+      </KeyboardAvoidingView>
+    </AppScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, paddingTop: 12, paddingHorizontal: 16, paddingBottom: 16, backgroundColor: '#FFFFFF', gap: 12 },
-  head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  left: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-  circleBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#F6F7F8', alignItems: 'center', justifyContent: 'center' },
-  circleText: { color: '#1A1A1A', fontSize: 13 },
-  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFE3E5' },
-  name: { color: '#1A1A1A', fontSize: 15, fontWeight: '700' },
-  role: { color: '#9CA3AF', fontSize: 12, fontWeight: '500' },
-  messages: { gap: 10, flexGrow: 1 },
+  page: { flex: 1, backgroundColor: colors.pageBg },
+  head: {
+    height: 56,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  backText: { color: colors.textPrimary, fontFamily: fontFamilies.primary, fontSize: 22, marginTop: -2 },
+  headTitle: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '700' },
+  infoBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  infoText: { color: colors.textSecondary, fontFamily: fontFamilies.primary, fontSize: 16 },
+  messages: { gap: 10, flexGrow: 1, paddingHorizontal: 20, paddingBottom: 10 },
   inWrap: { alignSelf: 'flex-start', gap: 4 },
   outWrap: { alignSelf: 'flex-end', gap: 4, alignItems: 'flex-end' },
-  inBubble: { maxWidth: 320, alignSelf: 'flex-start', backgroundColor: '#F1F5F9', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12 },
-  inText: { color: '#1A1A1A', fontSize: 14 },
-  time: { color: '#9CA3AF', fontSize: 11 },
-  outBubble: { maxWidth: 320, backgroundColor: '#FF6B6B', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12 },
-  outText: { color: '#FFFFFF', fontSize: 14 },
+  inBubble: { maxWidth: 320, alignSelf: 'flex-start', backgroundColor: colors.surface, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12 },
+  inText: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary },
+  time: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textMuted, fontSize: 11 },
+  outBubble: { maxWidth: 320, backgroundColor: colors.cardStrong, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12 },
+  outText: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary },
   composer: {
-    minHeight: 58,
+    minHeight: 56,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
+    marginHorizontal: 20,
+    marginBottom: 12,
   },
-  input: { flex: 1, color: '#111827', fontSize: 14 },
-  sendBtn: { backgroundColor: '#FF6B6B' },
-  sendText: { color: '#FFFFFF' },
+  pencil: { color: colors.textMuted, fontFamily: fontFamilies.primary, fontSize: 14 },
+  input: { flex: 1, color: colors.textPrimary, fontFamily: fontFamilies.primary, fontSize: 13, paddingVertical: 0 },
+  circleBtn: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  attachBtn: { backgroundColor: colors.actionBlue },
+  sendBtn: { backgroundColor: colors.primary },
+  circleText: { color: colors.surface, fontFamily: fontFamilies.primary, fontSize: 14 },
+  sendText: { color: colors.surface, fontFamily: fontFamilies.primary, fontSize: 16, marginTop: -2 },
 });

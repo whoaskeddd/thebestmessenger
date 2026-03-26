@@ -4,8 +4,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { modulesApi } from '../api/modules';
+import { AppScreen } from '../components/layout/AppScreen';
+import { BottomPillNav } from '../components/navigation/BottomPillNav';
 import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
+import { colors } from '../theme/colors';
+import { fontFamilies, typography } from '../theme/typography';
 import type { Announcement, HrTask } from '../types/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
@@ -50,142 +54,239 @@ export const DashboardScreen = ({ navigation }: Props) => {
 
   useFocusEffect(loadBadges);
 
+  const displayName = getDisplayName(user?.email ?? '');
+  const roleLabel = getRoleLabel(user?.role ?? null);
+
   return (
-    <ScrollView contentContainerStyle={styles.wrap}>
-      <Text style={styles.title}>Дашборд</Text>
-      <Text style={styles.sub}>Задачи, заявки и сообщения на сегодня</Text>
+    <AppScreen>
+      <View style={styles.page}>
+        <ScrollView contentContainerStyle={styles.wrap}>
+          <View style={styles.topRow}>
+            <Text style={styles.title}>Главная</Text>
+            <Pressable style={styles.iconBtn} onPress={() => Alert.alert('MVP', 'Уведомления появятся позже')}>
+              <Text style={styles.iconText}>🔔</Text>
+            </Pressable>
+          </View>
 
-      <View style={[styles.card, { backgroundColor: '#F6F7F8' }]}> 
-        <Text style={styles.cardTitle}>Профиль</Text>
-        <Text style={styles.line}>{user?.email ?? '—'}</Text>
-        <Text style={styles.line}>Роль: {user?.role ?? '—'}</Text>
+          <View style={styles.profileCard}>
+            <View style={styles.avatar} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.profileName}>{displayName}</Text>
+              <Text style={styles.profileRole}>{roleLabel}</Text>
+            </View>
+            {isHr ? (
+              <Pressable style={styles.hrChip} onPress={() => navigation.navigate('Employees')}>
+                <Text style={styles.hrChipText}>HR</Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>Задачи</Text>
+              <Text style={styles.statValue}>{Math.max(newTasksCount, tasks.length) || 0} в работе</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>Согласования</Text>
+              <Text style={styles.statValue}>{isHr ? unreadLeaveCount : 0} заявки</Text>
+            </View>
+          </View>
+
+          <View style={styles.sectionHead}>
+            <Text style={styles.sectionTitle}>Новости и обновления</Text>
+            <Pressable onPress={() => navigation.navigate('News')}>
+              <Text style={styles.sectionLink}>Смотреть все</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.newsList}>
+            {(announcements.length ? announcements : [{ id: 'stub', title: 'Обновлений пока нет', body: ' ' } as Announcement])
+              .slice(0, 2)
+              .map((item) => (
+                <Pressable
+                  key={item.id}
+                  style={styles.newsCard}
+                  onPress={() => navigation.navigate('News')}
+                >
+                  <Text style={styles.newsTitle}>{item.title}</Text>
+                  <Text numberOfLines={2} style={styles.newsBody}>
+                    {item.body || '—'}
+                  </Text>
+                </Pressable>
+              ))}
+          </View>
+
+          <Pressable style={styles.logoutBtn} onPress={() => void logout()}>
+            <Text style={styles.logoutText}>Выйти</Text>
+          </Pressable>
+        </ScrollView>
+
+        <BottomPillNav activeRoute="Dashboard" />
       </View>
-
-      <View style={[styles.card, { backgroundColor: '#F6F7F8' }]}> 
-        <Text style={styles.cardTitle}>Задачи</Text>
-        {(tasks.length ? tasks : [{ id: 'stub-1', title: 'Нет активных задач' }]).map((task) => (
-          <Text key={task.id} style={styles.line}>• {task.title}</Text>
-        ))}
-      </View>
-
-      <View style={[styles.card, { backgroundColor: '#FFF4F4' }]}> 
-        <Text style={styles.cardTitle}>Новости</Text>
-        {(announcements.length ? announcements : [{ id: 'stub-2', title: 'Нет объявлений' }]).map((announcement) => (
-          <Text key={announcement.id} style={styles.line}>• {announcement.title}</Text>
-        ))}
-      </View>
-
-      <View style={styles.grid}>
-        {isHr ? <QuickButton title="Сотрудники" onPress={() => navigation.navigate('Employees')} /> : null}
-        {isHr ? <QuickButton title="Карточка" onPress={() => navigation.navigate('EmployeeCard', undefined)} /> : null}
-        <QuickButton title="Заявки" onPress={() => navigation.navigate('Leaves')} badgeCount={isHr ? unreadLeaveCount : 0} />
-        <QuickButton title="Новости" onPress={() => navigation.navigate('News')} />
-        <QuickButton title="Задачи" onPress={() => navigation.navigate('Tasks')} badgeCount={newTasksCount} />
-        <QuickButton title="Чаты" onPress={() => navigation.navigate('Chats')} />
-        <QuickButton
-          title="Комната"
-          onPress={() => navigation.navigate('ChatRoom', { chatId: 'general', chatName: 'Общий чат HR' })}
-        />
-      </View>
-
-      <Pressable style={styles.logoutBtn} onPress={() => void logout()}>
-        <Text style={styles.logoutText}>Выйти</Text>
-      </Pressable>
-    </ScrollView>
+    </AppScreen>
   );
 };
 
-const QuickButton = ({ title, onPress, badgeCount }: { title: string; onPress: () => void; badgeCount?: number }) => (
-  <Pressable style={styles.quickButton} onPress={onPress}>
-    <Text style={styles.quickButtonText}>{title}</Text>
-    {badgeCount ? (
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>{badgeCount > 99 ? '99+' : String(badgeCount)}</Text>
-      </View>
-    ) : null}
-  </Pressable>
-);
+function getDisplayName(email: string): string {
+  const local = (email.split('@')[0] ?? '').trim();
+  if (!local) return 'Сотрудник';
+  const parts = local.split(/[._-]+/g).filter(Boolean);
+  const toTitle = (s: string) => s.slice(0, 1).toUpperCase() + s.slice(1);
+  if (parts.length >= 2) return `${toTitle(parts[0])} ${toTitle(parts[1])}`;
+  return toTitle(local);
+}
+
+function getRoleLabel(role: string | null): string {
+  if (!role) return '—';
+  if (role === 'admin') return 'Администратор';
+  if (role === 'hr') return 'HR менеджер';
+  if (role === 'manager') return 'Руководитель';
+  return 'Сотрудник';
+}
 
 const styles = StyleSheet.create({
+  page: {
+    flex: 1,
+  },
   wrap: {
-    paddingTop: 24,
+    paddingTop: 16,
     paddingHorizontal: 20,
-    paddingBottom: 32,
+    paddingBottom: 120,
     gap: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.pageBg,
   },
   title: {
-    color: '#1A1A1A',
-    fontSize: 32,
-    fontWeight: '700',
+    ...typography.title,
+    fontFamily: fontFamilies.primary,
+    color: colors.textPrimary,
   },
-  sub: {
-    marginTop: -6,
-    color: '#6B7280',
-    fontSize: 13,
-  },
-  card: {
-    borderRadius: 16,
-    padding: 14,
-    gap: 8,
-  },
-  cardTitle: {
-    color: '#1A1A1A',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  line: {
-    color: '#374151',
-    fontSize: 13,
-  },
-  grid: {
+  topRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconText: {
+    fontSize: 16,
+  },
+  profileCard: {
+    borderRadius: 16,
+    backgroundColor: colors.cardStrong,
+    padding: 14,
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#2E6DE0',
+  },
+  profileName: {
+    ...typography.body,
+    fontFamily: fontFamilies.primary,
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  profileRole: {
+    ...typography.caption,
+    fontFamily: fontFamilies.primary,
+    color: colors.textSecondary,
+  },
+  hrChip: {
+    height: 28,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hrChipText: {
+    ...typography.caption,
+    fontFamily: fontFamilies.primary,
+    color: colors.textSecondary,
+    fontWeight: '700',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    padding: 12,
+    gap: 4,
+  },
+  statLabel: {
+    ...typography.caption,
+    fontFamily: fontFamilies.primary,
+    color: colors.textMuted,
+  },
+  statValue: {
+    ...typography.body,
+    fontFamily: fontFamilies.primary,
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionTitle: {
+    ...typography.body,
+    fontFamily: fontFamilies.primary,
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  sectionLink: {
+    ...typography.caption,
+    fontFamily: fontFamilies.primary,
+    color: colors.actionBlue,
+    fontWeight: '700',
+  },
+  newsList: {
     gap: 10,
   },
-  quickButton: {
-    minWidth: 110,
-    height: 40,
-    backgroundColor: '#F0F5FF',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    position: 'relative',
+  newsCard: {
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    padding: 12,
+    gap: 6,
   },
-  quickButtonText: {
-    color: '#4F46E5',
-    fontSize: 13,
+  newsTitle: {
+    ...typography.body,
+    fontFamily: fontFamilies.primary,
+    color: colors.textPrimary,
     fontWeight: '700',
   },
-  badge: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 999,
-    backgroundColor: '#DC2626',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 5,
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
+  newsBody: {
+    ...typography.caption,
+    fontFamily: fontFamilies.primary,
+    color: colors.textSecondary,
   },
   logoutBtn: {
     marginTop: 6,
-    height: 48,
+    height: 44,
     borderRadius: 14,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   logoutText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
+    ...typography.button,
+    fontFamily: fontFamilies.primary,
+    color: colors.surface,
   },
 });

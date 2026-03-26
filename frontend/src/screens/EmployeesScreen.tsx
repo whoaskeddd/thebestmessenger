@@ -14,8 +14,11 @@ import {
 } from 'react-native';
 
 import { modulesApi } from '../api/modules';
+import { AppScreen } from '../components/layout/AppScreen';
 import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
+import { colors } from '../theme/colors';
+import { fontFamilies, typography } from '../theme/typography';
 import type { Department, Employee } from '../types/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Employees'>;
@@ -27,6 +30,7 @@ export const EmployeesScreen = ({ navigation }: Props) => {
   const [isLoading, setLoading] = useState(true);
   const [isProvisioning, setProvisioning] = useState(false);
   const [search, setSearch] = useState('');
+  const [showProvision, setShowProvision] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [position, setPosition] = useState('');
@@ -132,224 +136,272 @@ export const EmployeesScreen = ({ navigation }: Props) => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.wrap}>
-      <Text style={styles.title}>Сотрудники</Text>
-
-      {!isHr ? (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>Раздел доступен только для HR</Text>
+    <AppScreen>
+      <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
+        <View style={styles.header}>
+          <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Text style={styles.backText}>‹</Text>
+          </Pressable>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title}>Сотрудники</Text>
+            <Text style={styles.subtitle}>Справочник по командам и отделам</Text>
+          </View>
+          {isHr ? (
+            <Pressable style={styles.plus} onPress={() => setShowProvision((v) => !v)}>
+              <Text style={styles.plusText}>{showProvision ? '×' : '+'}</Text>
+            </Pressable>
+          ) : (
+            <View style={{ width: 36 }} />
+          )}
         </View>
-      ) : null}
 
-      {!isHr ? null : (
-        <>
-          <View style={styles.createCard}>
-            <Text style={styles.createTitle}>Создать сотрудника (HR)</Text>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Имя"
-              value={firstName}
-              onChangeText={setFirstName}
-              placeholderTextColor="#9CA3AF"
-            />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Фамилия"
-              value={lastName}
-              onChangeText={setLastName}
-              placeholderTextColor="#9CA3AF"
-            />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Должность (необязательно)"
-              value={position}
-              onChangeText={setPosition}
-              placeholderTextColor="#9CA3AF"
-            />
-            <Pressable style={styles.deptBtn} onPress={() => setDeptPickerOpen(true)}>
-              <Text style={styles.deptBtnText}>{selectedDepartmentsLabel}</Text>
-              {selectedDepartmentIds.length ? (
-                <Text style={styles.deptBtnMeta}>Выбрано: {selectedDepartmentIds.length}</Text>
-              ) : null}
-            </Pressable>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Логин (email)"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              placeholderTextColor="#9CA3AF"
-            />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Временный пароль"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              placeholderTextColor="#9CA3AF"
-            />
-            <Pressable style={styles.createBtn} onPress={() => void onProvision()} disabled={isProvisioning}>
-              <Text style={styles.createBtnText}>{isProvisioning ? 'Создаю...' : 'Создать и выдать доступ'}</Text>
-            </Pressable>
+        {!isHr ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>Раздел доступен только для HR</Text>
           </View>
+        ) : null}
 
-          <View style={styles.searchWrap}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Поиск по имени или должности"
-              value={search}
-              onChangeText={setSearch}
-              autoCapitalize="none"
-              placeholderTextColor="#9CA3AF"
-            />
-            <Pressable style={styles.refreshBtn} onPress={() => void load(search)}>
-              <Text style={styles.refreshText}>Обновить</Text>
-            </Pressable>
-          </View>
+        {!isHr ? null : (
+          <>
+            {showProvision ? (
+              <View style={styles.createCard}>
+                <Text style={styles.createTitle}>Создать сотрудника</Text>
+                <View style={styles.row2}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Имя"
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    placeholderTextColor={colors.textMuted}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Фамилия"
+                    value={lastName}
+                    onChangeText={setLastName}
+                    placeholderTextColor={colors.textMuted}
+                  />
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Должность (необязательно)"
+                  value={position}
+                  onChangeText={setPosition}
+                  placeholderTextColor={colors.textMuted}
+                />
+                <Pressable style={styles.deptBtn} onPress={() => setDeptPickerOpen(true)}>
+                  <Text style={styles.deptBtnText}>{selectedDepartmentsLabel}</Text>
+                  {selectedDepartmentIds.length ? (
+                    <Text style={styles.deptBtnMeta}>Выбрано: {selectedDepartmentIds.length}</Text>
+                  ) : null}
+                </Pressable>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Логин (email)"
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  placeholderTextColor={colors.textMuted}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Временный пароль"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  placeholderTextColor={colors.textMuted}
+                />
+                <Pressable style={styles.createBtn} onPress={() => void onProvision()} disabled={isProvisioning}>
+                  <Text style={styles.createBtnText}>{isProvisioning ? 'Создаю...' : 'Создать и выдать доступ'}</Text>
+                </Pressable>
+              </View>
+            ) : null}
 
-          {isLoading ? <ActivityIndicator color="#FF6B6B" /> : null}
-
-          {!isLoading && filtered.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyText}>Сотрудники не найдены</Text>
+            <View style={styles.searchWrap}>
+              <TextInput
+                style={styles.search}
+                placeholder="Поиск по имени или должности"
+                value={search}
+                onChangeText={setSearch}
+                autoCapitalize="none"
+                placeholderTextColor={colors.textMuted}
+                returnKeyType="search"
+                onSubmitEditing={() => void load(search)}
+              />
+              <View style={styles.filters}>
+                <FilterChip label="All" active />
+                <FilterChip label="Teams" active={false} />
+                <FilterChip label="Location" active={false} />
+              </View>
             </View>
-          ) : null}
 
-          {filtered.map((employee) => (
-            <Pressable
-              key={employee.id}
-              style={styles.card}
-              onPress={() => navigation.navigate('EmployeeCard', { employeeId: employee.id })}
-            >
-              <Text style={styles.name}>{employee.first_name} {employee.last_name}</Text>
-              <Text style={styles.role}>{employee.position ?? 'Должность не указана'}</Text>
-              <Text style={styles.meta}>{employee.work_email ?? 'Email не указан'}</Text>
-            </Pressable>
-          ))}
-        </>
-      )}
+            {isLoading ? <ActivityIndicator color={colors.primary} /> : null}
 
-      <Modal visible={isDeptPickerOpen} transparent animationType="fade" onRequestClose={closeDeptPicker}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Отделы</Text>
-              <Pressable onPress={closeDeptPicker} style={styles.modalClose}>
-                <Text style={styles.modalCloseText}>Закрыть</Text>
+            {!isLoading && filtered.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>Сотрудники не найдены</Text>
+              </View>
+            ) : null}
+
+            {filtered.map((employee) => (
+              <Pressable
+                key={employee.id}
+                style={styles.card}
+                onPress={() => navigation.navigate('EmployeeCard', { employeeId: employee.id })}
+              >
+                <Text style={styles.name}>{employee.first_name} {employee.last_name}</Text>
+                <Text style={styles.role}>{employee.position ?? 'Сотрудник'}</Text>
+                <View style={styles.tags}>
+                  {(employee.departments ?? []).slice(0, 2).map((dep) => (
+                    <View key={dep.id} style={styles.tag}>
+                      <Text style={styles.tagText}>{dep.name}</Text>
+                    </View>
+                  ))}
+                  {!employee.departments?.length ? (
+                    <View style={styles.tag}>
+                      <Text style={styles.tagText}>—</Text>
+                    </View>
+                  ) : null}
+                </View>
+              </Pressable>
+            ))}
+          </>
+        )}
+
+        <Modal visible={isDeptPickerOpen} transparent animationType="fade" onRequestClose={closeDeptPicker}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Отделы</Text>
+                <Pressable onPress={closeDeptPicker} style={styles.modalClose}>
+                  <Text style={styles.modalCloseText}>Закрыть</Text>
+                </Pressable>
+              </View>
+
+              <TextInput
+                style={styles.modalSearch}
+                value={deptQuery}
+                onChangeText={setDeptQuery}
+                placeholder="Поиск отдела"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="none"
+              />
+
+              <FlatList
+                data={filteredDepartments}
+                keyExtractor={(item) => item.id}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => {
+                  const checked = selectedDepartmentIds.includes(item.id);
+                  return (
+                    <Pressable style={[styles.deptRow, checked && styles.deptRowChecked]} onPress={() => toggleDepartment(item.id)}>
+                      <Text style={styles.deptName}>{item.name}</Text>
+                      <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+                        <Text style={styles.checkboxText}>{checked ? '✓' : ''}</Text>
+                      </View>
+                    </Pressable>
+                  );
+                }}
+                ListEmptyComponent={<Text style={styles.emptyText}>Отделы не найдены</Text>}
+              />
+
+              <Pressable style={styles.modalDone} onPress={closeDeptPicker}>
+                <Text style={styles.modalDoneText}>Готово</Text>
               </Pressable>
             </View>
-
-            <TextInput
-              style={styles.modalSearch}
-              value={deptQuery}
-              onChangeText={setDeptQuery}
-              placeholder="Поиск отдела"
-              placeholderTextColor="#9CA3AF"
-              autoCapitalize="none"
-            />
-
-            <FlatList
-              data={filteredDepartments}
-              keyExtractor={(item) => item.id}
-              keyboardShouldPersistTaps="handled"
-              renderItem={({ item }) => {
-                const checked = selectedDepartmentIds.includes(item.id);
-                return (
-                  <Pressable style={[styles.deptRow, checked && styles.deptRowChecked]} onPress={() => toggleDepartment(item.id)}>
-                    <Text style={styles.deptName}>{item.name}</Text>
-                    <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
-                      <Text style={styles.checkboxText}>{checked ? '✓' : ''}</Text>
-                    </View>
-                  </Pressable>
-                );
-              }}
-              ListEmptyComponent={<Text style={styles.emptyText}>Отделы не найдены</Text>}
-            />
-
-            <Pressable style={styles.modalDone} onPress={closeDeptPicker}>
-              <Text style={styles.modalDoneText}>Готово</Text>
-            </Pressable>
           </View>
-        </View>
-      </Modal>
-    </ScrollView>
+        </Modal>
+      </ScrollView>
+    </AppScreen>
   );
 };
 
+const FilterChip = ({ label, active }: { label: string; active: boolean }) => (
+  <View style={[styles.filterChip, active && styles.filterChipActive]}>
+    <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{label}</Text>
+  </View>
+);
+
 const styles = StyleSheet.create({
-  wrap: { paddingTop: 24, paddingHorizontal: 20, paddingBottom: 24, gap: 14, backgroundColor: '#FFFFFF' },
-  title: { color: '#1A1A1A', fontSize: 32, fontWeight: '700' },
-  searchWrap: { gap: 8 },
-  searchInput: {
-    height: 50,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+  wrap: { paddingTop: 16, paddingHorizontal: 20, paddingBottom: 32, gap: 14, backgroundColor: colors.pageBg },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  backText: { color: colors.textPrimary, fontFamily: fontFamilies.primary, fontSize: 22, marginTop: -2 },
+  title: { ...typography.title, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontSize: 24 },
+  subtitle: { ...typography.subtitle, fontFamily: fontFamilies.primary, color: colors.textSecondary, marginTop: 2 },
+  plus: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  plusText: { color: colors.surface, fontSize: 18, fontWeight: '700', fontFamily: fontFamilies.primary, marginTop: -1 },
+  searchWrap: { gap: 10 },
+  search: {
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primarySoft,
     paddingHorizontal: 14,
-    color: '#111827',
+    color: colors.textPrimary,
+    fontFamily: fontFamilies.primary,
+    fontSize: 13,
   },
   deptBtn: {
     minHeight: 50,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     paddingHorizontal: 14,
     paddingVertical: 10,
     justifyContent: 'center',
     gap: 2,
   },
-  deptBtnText: { color: '#111827', fontWeight: '700' },
-  deptBtnMeta: { color: '#6B7280', fontSize: 12 },
-  refreshBtn: {
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: '#F0F5FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  refreshText: { color: '#4F46E5', fontWeight: '700' },
-  emptyCard: { borderRadius: 14, backgroundColor: '#F6F7F8', padding: 14 },
-  emptyText: { color: '#6B7280' },
+  deptBtnText: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '700' },
+  deptBtnMeta: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textSecondary },
+  filters: { flexDirection: 'row', gap: 8 },
+  filterChip: { height: 28, borderRadius: 999, backgroundColor: colors.primarySoft, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
+  filterChipActive: { backgroundColor: colors.surface },
+  filterChipText: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textSecondary, fontWeight: '700' },
+  filterChipTextActive: { color: colors.textPrimary },
+  emptyCard: { borderRadius: 16, backgroundColor: colors.primarySoft, padding: 14 },
+  emptyText: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textSecondary },
   createCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-    padding: 12,
+    borderRadius: 16,
+    backgroundColor: colors.cardStrong,
+    padding: 14,
     gap: 8,
   },
-  createTitle: { color: '#111827', fontWeight: '700' },
-  createBtn: {
-    height: 42,
+  createTitle: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '700' },
+  row2: { flexDirection: 'row', gap: 10 },
+  input: {
+    flex: 1,
+    height: 44,
     borderRadius: 12,
-    backgroundColor: '#FF6B6B',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: colors.surface,
+    paddingHorizontal: 12,
+    color: colors.textPrimary,
+    fontFamily: fontFamilies.primary,
   },
-  createBtnText: { color: '#FFFFFF', fontWeight: '700' },
-  card: { borderRadius: 14, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#FFFFFF', padding: 12, gap: 4 },
-  name: { color: '#1A1A1A', fontSize: 15, fontWeight: '700' },
-  role: { color: '#6B7280', fontSize: 13 },
-  meta: { color: '#9CA3AF', fontSize: 12 },
+  createBtn: { height: 44, borderRadius: 12, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
+  createBtnText: { ...typography.button, fontFamily: fontFamilies.primary, color: colors.surface },
+  card: { borderRadius: 16, backgroundColor: colors.cardSoft, padding: 14, gap: 4 },
+  name: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '700' },
+  role: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textSecondary },
+  tags: { flexDirection: 'row', gap: 8, marginTop: 6, flexWrap: 'wrap' },
+  tag: { height: 24, borderRadius: 999, backgroundColor: colors.primarySoft, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center' },
+  tagText: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textSecondary, fontWeight: '700' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', padding: 20, justifyContent: 'center' },
-  modalCard: { maxHeight: '80%', borderRadius: 16, backgroundColor: '#FFFFFF', padding: 14, gap: 10 },
+  modalCard: { maxHeight: '80%', borderRadius: 16, backgroundColor: colors.surface, padding: 14, gap: 10 },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  modalTitle: { color: '#111827', fontWeight: '800', fontSize: 16 },
-  modalClose: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, backgroundColor: '#F3F4F6' },
-  modalCloseText: { color: '#111827', fontWeight: '700', fontSize: 12 },
+  modalTitle: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '800', fontSize: 16 },
+  modalClose: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, backgroundColor: colors.primarySoft },
+  modalCloseText: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '700' },
   modalSearch: {
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.primarySoft,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
     paddingHorizontal: 12,
-    color: '#111827',
+    color: colors.textPrimary,
+    fontFamily: fontFamilies.primary,
   },
   deptRow: {
     flexDirection: 'row',
@@ -358,23 +410,23 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 10,
     borderRadius: 12,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.primarySoft,
     marginBottom: 8,
   },
-  deptRowChecked: { backgroundColor: '#EEF2FF' },
-  deptName: { color: '#111827', fontWeight: '800' },
+  deptRowChecked: { backgroundColor: colors.cardSoft },
+  deptName: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '800' },
   checkbox: {
     width: 22,
     height: 22,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#CBD5E1',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
-  checkboxChecked: { borderColor: '#4F46E5', backgroundColor: '#4F46E5' },
-  checkboxText: { color: '#FFFFFF', fontWeight: '900', fontSize: 14, marginTop: -2 },
-  modalDone: { height: 44, borderRadius: 12, backgroundColor: '#4F46E5', alignItems: 'center', justifyContent: 'center' },
-  modalDoneText: { color: '#FFFFFF', fontWeight: '800' },
+  checkboxChecked: { borderColor: colors.primary, backgroundColor: colors.primary },
+  checkboxText: { color: colors.surface, fontWeight: '900', fontSize: 14, marginTop: -2 },
+  modalDone: { height: 44, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  modalDoneText: { ...typography.button, fontFamily: fontFamilies.primary, color: colors.surface, fontWeight: '800' },
 });
