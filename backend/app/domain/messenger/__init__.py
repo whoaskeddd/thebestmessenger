@@ -1,0 +1,2 @@
+"""Messenger domain slice."""
+
