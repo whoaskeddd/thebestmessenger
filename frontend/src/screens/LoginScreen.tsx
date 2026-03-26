@@ -55,21 +55,11 @@ export const LoginScreen = (_props: Props) => {
               placeholder="Пароль"
               secureTextEntry
             />
-            <Text style={styles.hint}>JWT-обновление выполняется автоматически</Text>
           </View>
 
           <PrimaryButton title="Войти" onPress={onSubmit} disabled={isLoading} />
 
           {isLoading ? <ActivityIndicator color={colors.primary} /> : null}
-
-          <View style={styles.footer}>
-            <LinkText
-              bold={false}
-              title="Забыли пароль?"
-              onPress={() => Alert.alert('MVP', 'Восстановление пароля будет добавлено позже')}
-              color={colors.textSecondary}
-            />
-          </View>
         </View>
       </KeyboardAvoidingView>
     </AppScreen>
