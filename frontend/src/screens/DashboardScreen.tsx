@@ -11,6 +11,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 
 export const DashboardScreen = ({ navigation }: Props) => {
   const { user, logout } = useAuth();
+  const isHr = user?.role === 'hr' || user?.role === 'admin';
   const [tasks, setTasks] = useState<HrTask[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
@@ -55,12 +56,16 @@ export const DashboardScreen = ({ navigation }: Props) => {
       </View>
 
       <View style={styles.grid}>
-        <QuickButton title="Сотрудники" onPress={() => navigation.navigate('Employees')} />
-        <QuickButton title="Карточка" onPress={() => navigation.navigate('EmployeeCard')} />
+        {isHr ? <QuickButton title="Сотрудники" onPress={() => navigation.navigate('Employees')} /> : null}
+        {isHr ? <QuickButton title="Карточка" onPress={() => navigation.navigate('EmployeeCard', undefined)} /> : null}
         <QuickButton title="Заявки" onPress={() => navigation.navigate('Leaves')} />
         <QuickButton title="Новости" onPress={() => navigation.navigate('News')} />
+        <QuickButton title="Задачи" onPress={() => navigation.navigate('Tasks')} />
         <QuickButton title="Чаты" onPress={() => navigation.navigate('Chats')} />
-        <QuickButton title="Комната" onPress={() => navigation.navigate('ChatRoom')} />
+        <QuickButton
+          title="Комната"
+          onPress={() => navigation.navigate('ChatRoom', { chatId: 'general', chatName: 'Общий чат HR' })}
+        />
       </View>
 
       <Pressable style={styles.logoutBtn} onPress={() => void logout()}>

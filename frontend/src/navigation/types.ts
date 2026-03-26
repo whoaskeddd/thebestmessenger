@@ -3,9 +3,10 @@ export type RootStackParamList = {
   Register: undefined;
   Dashboard: undefined;
   Employees: undefined;
-  EmployeeCard: undefined;
+  EmployeeCard: { employeeId?: string } | undefined;
   Leaves: undefined;
   News: undefined;
+  Tasks: undefined;
   Chats: undefined;
-  ChatRoom: undefined;
+  ChatRoom: { chatId: string; chatName: string } | undefined;
 };

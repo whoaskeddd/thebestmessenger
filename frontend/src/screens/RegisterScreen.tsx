@@ -1,10 +1,11 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppBackground, InputField, LinkText, PrimaryButton, SubTitle, Title } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
+import type { UserRole } from '../types/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
@@ -13,6 +14,7 @@ export const RegisterScreen = ({ navigation }: Props) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [role, setRole] = useState<UserRole>('employee');
   const [isLoading, setLoading] = useState(false);
 
   const onSubmit = async (): Promise<void> => {
@@ -33,7 +35,7 @@ export const RegisterScreen = ({ navigation }: Props) => {
 
     setLoading(true);
     try {
-      await register(email.trim(), password);
+      await register(email.trim(), password, role);
     } catch (error) {
       Alert.alert('Регистрация не выполнена', error instanceof Error ? error.message : 'Неизвестная ошибка');
     } finally {
@@ -56,6 +58,10 @@ export const RegisterScreen = ({ navigation }: Props) => {
             <InputField value={email} onChangeText={setEmail} placeholder="Рабочий email" keyboardType="email-address" />
             <InputField value={password} onChangeText={setPassword} placeholder="Пароль" secureTextEntry />
             <InputField value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Подтверждение пароля" secureTextEntry />
+            <View style={styles.rolesRow}>
+              <RoleChip label="Сотрудник" active={role === 'employee'} onPress={() => setRole('employee')} />
+              <RoleChip label="HR" active={role === 'hr'} onPress={() => setRole('hr')} />
+            </View>
           </View>
 
           <View style={styles.agreeRow}>
@@ -76,6 +82,12 @@ export const RegisterScreen = ({ navigation }: Props) => {
   );
 };
 
+const RoleChip = ({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) => (
+  <Pressable style={[styles.roleChip, active && styles.roleChipActive]} onPress={onPress}>
+    <Text style={[styles.roleChipText, active && styles.roleChipTextActive]}>{label}</Text>
+  </Pressable>
+);
+
 const styles = StyleSheet.create({
   page: { flex: 1 },
   content: {
@@ -86,6 +98,27 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 12,
+  },
+  rolesRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  roleChip: {
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#F6F7F8',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  roleChipActive: {
+    backgroundColor: '#FF6B6B',
+  },
+  roleChipText: {
+    color: '#4B5563',
+    fontWeight: '600',
+  },
+  roleChipTextActive: {
+    color: '#FFFFFF',
   },
   agreeRow: {
     flexDirection: 'row',

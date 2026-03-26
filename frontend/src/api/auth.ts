@@ -1,5 +1,5 @@
 import { API_BASE_URL } from '../config';
-import type { MeResponse, TokenPair } from '../types/api';
+import type { MeResponse, TokenPair, UserRole } from '../types/api';
 
 type RequestInitEx = RequestInit & { skipAuth?: boolean };
 
@@ -89,11 +89,11 @@ export const authApi = {
     });
   },
 
-  register(email: string, password: string): Promise<TokenPair> {
+  register(email: string, password: string, role: UserRole): Promise<TokenPair> {
     return request<TokenPair>('/auth/register', {
       method: 'POST',
       skipAuth: true,
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, role }),
     });
   },
 

@@ -1,25 +1,89 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-export const EmployeeCardScreen = () => (
-  <ScrollView contentContainerStyle={styles.wrap}>
-    <Text style={styles.title}>Карточка сотрудника</Text>
+import { modulesApi } from '../api/modules';
+import { useAuth } from '../context/AuthContext';
+import type { RootStackParamList } from '../navigation/types';
+import type { Employee } from '../types/api';
 
-    <View style={styles.profileCard}>
-      <Text style={styles.name}>Илья Иванов</Text>
-      <Text style={styles.role}>HR Business Partner</Text>
-      <Text style={styles.meta}>ivanov@company.com</Text>
-      <Text style={styles.meta}>+7 (900) 000-00-01</Text>
-    </View>
+type Props = NativeStackScreenProps<RootStackParamList, 'EmployeeCard'>;
 
-    <View style={styles.infoCard}>
-      <Text style={styles.meta}>Отдел: HR</Text>
-      <Text style={styles.meta}>Руководитель: Анна Петрова</Text>
-    </View>
+export const EmployeeCardScreen = ({ route }: Props) => {
+  const { user } = useAuth();
+  const isHr = user?.role === 'hr' || user?.role === 'admin';
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [isLoading, setLoading] = useState(true);
 
-    <Pressable style={[styles.action, { backgroundColor: '#FF6B6B' }]}><Text style={styles.actionText}>Написать</Text></Pressable>
-    <Pressable style={[styles.action, { backgroundColor: '#F0F5FF' }]}><Text style={[styles.actionText, { color: '#4F46E5' }]}>Позвонить</Text></Pressable>
-  </ScrollView>
-);
+  useEffect(() => {
+    (async () => {
+      if (!isHr) {
+        setLoading(false);
+        return;
+      }
+      try {
+        setLoading(true);
+        const employeeId = route.params?.employeeId;
+
+        if (employeeId) {
+          const item = await modulesApi.getEmployee(employeeId);
+          setEmployee(item);
+          return;
+        }
+
+        const all = await modulesApi.getEmployees();
+        setEmployee(all[0] ?? null);
+      } catch (error) {
+        Alert.alert('Ошибка загрузки', error instanceof Error ? error.message : 'Не удалось получить карточку сотрудника');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [isHr, route.params?.employeeId]);
+
+  return (
+    <ScrollView contentContainerStyle={styles.wrap}>
+      <Text style={styles.title}>Карточка сотрудника</Text>
+
+      {!isHr ? (
+        <View style={styles.infoCard}>
+          <Text style={styles.meta}>Раздел доступен только для HR</Text>
+        </View>
+      ) : null}
+
+      {isHr && isLoading ? <ActivityIndicator color="#FF6B6B" /> : null}
+
+      {isHr && !isLoading && !employee ? (
+        <View style={styles.infoCard}>
+          <Text style={styles.meta}>Сотрудники пока не добавлены</Text>
+        </View>
+      ) : null}
+
+      {isHr && employee ? (
+        <>
+          <View style={styles.profileCard}>
+            <Text style={styles.name}>{employee.first_name} {employee.last_name}</Text>
+            <Text style={styles.role}>{employee.position ?? 'Должность не указана'}</Text>
+            <Text style={styles.meta}>{employee.work_email ?? 'Email не указан'}</Text>
+            <Text style={styles.meta}>{employee.phone ?? 'Телефон не указан'}</Text>
+          </View>
+
+          <View style={styles.infoCard}>
+            <Text style={styles.meta}>Отделы: {(employee.departments ?? []).map((dep) => dep.name).join(', ') || 'Не назначены'}</Text>
+            <Text style={styles.meta}>Статус: {employee.is_active === false ? 'Неактивен' : 'Активен'}</Text>
+          </View>
+
+          <Pressable style={[styles.action, { backgroundColor: '#FF6B6B' }]}>
+            <Text style={styles.actionText}>Написать</Text>
+          </Pressable>
+          <Pressable style={[styles.action, { backgroundColor: '#F0F5FF' }]}>
+            <Text style={[styles.actionText, { color: '#4F46E5' }]}>Позвонить</Text>
+          </Pressable>
+        </>
+      ) : null}
+    </ScrollView>
+  );
+};
 
 const styles = StyleSheet.create({
   wrap: { paddingTop: 24, paddingHorizontal: 20, paddingBottom: 24, gap: 16, backgroundColor: '#FFFFFF' },

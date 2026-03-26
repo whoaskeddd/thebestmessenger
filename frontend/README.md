@@ -13,19 +13,37 @@
 
 ## Что реализовано
 
-- Экран `Login` и `Register` в стиле макета
-- Реальные запросы:
+- Полная web-навигация по страницам:
+  - `Login`
+  - `Register`
+  - `Dashboard`
+  - `Employees` (поиск + переход в карточку)
+  - `EmployeeCard`
+  - `Leaves` (создание + история)
+  - `News` (лента + детали + mark read)
+  - `Chats` (список + поиск)
+  - `ChatRoom` (локальная отправка сообщений)
+- Реальные запросы авторизации:
   - `POST /auth/login`
   - `POST /auth/register`
   - `GET /auth/me`
   - `POST /auth/refresh` (автообновление access токена)
   - `POST /auth/logout`
-- Пример запросов модулей после логина:
-  - `GET /hr-tasks/my`
-  - `GET /announcements`
+- Реальные запросы модулей:
   - `GET /employees`
+  - `GET /employees/{employee_id}`
+  - `GET /leave-requests`
+  - `POST /leave-requests`
+  - `GET /announcements`
+  - `GET /announcements/{announcement_id}`
+  - `POST /announcements/{announcement_id}/read`
+  - `GET /hr-tasks/my`
 - Хранение токенов в `AsyncStorage`
-- Навигация по модульным экранам из макета
+- Поддержка web-сборки (`expo export --platform web`) и строгой проверки TS (`npm run typecheck`)
+
+## Что пока mock-only
+
+- `Chats` и `ChatRoom` работают полностью на frontend (локальные данные/состояние), так как в текущем backend нет REST/WebSocket эндпоинтов мессенджера.
 
 ## Запуск
 
@@ -40,6 +58,33 @@ npm run web
 cd frontend
 npm run android
 ```
+
+## Dev-режим без backend (bypass auth)
+
+Если нужно открыть `Dashboard` и остальные приватные экраны без поднятого backend:
+
+1. Создайте env-файл:
+```bash
+cd frontend
+cp .env.example .env
+```
+2. Включите флаг:
+```env
+EXPO_PUBLIC_DEV_BYPASS_AUTH=true
+EXPO_PUBLIC_DEV_BYPASS_ROLE=hr
+```
+3. Запустите web:
+```bash
+npm run web
+```
+
+При включенном флаге приложение сразу логинит dev-пользователя (`role` можно переключать между `hr` и `employee`) и пропускает проверку `/auth/me`.
+Чтобы вернуть обычный режим, поставьте `EXPO_PUBLIC_DEV_BYPASS_AUTH=false`.
+
+## Ограничение текущего backend
+
+Сейчас `POST /auth/register` в backend сохраняет роль по умолчанию как `employee`.  
+Поле `role` уже отправляется с фронтенда, но начнет работать только после обновления backend-контракта.
 
 ## Важно для Web
 

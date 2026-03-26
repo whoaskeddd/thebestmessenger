@@ -11,6 +11,7 @@ import { LeavesScreen } from '../screens/LeavesScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { NewsScreen } from '../screens/NewsScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
+import { TasksScreen } from '../screens/TasksScreen';
 import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -35,6 +36,7 @@ export const AppNavigator = () => {
           <Stack.Screen name="EmployeeCard" component={EmployeeCardScreen} />
           <Stack.Screen name="Leaves" component={LeavesScreen} />
           <Stack.Screen name="News" component={NewsScreen} />
+          <Stack.Screen name="Tasks" component={TasksScreen} />
           <Stack.Screen name="Chats" component={ChatsScreen} />
           <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
         </>

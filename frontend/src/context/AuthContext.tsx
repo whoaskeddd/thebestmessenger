@@ -2,7 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { authApi, registerAuthClient } from '../api/auth';
-import type { MeResponse, TokenPair } from '../types/api';
+import { DEV_BYPASS_AUTH, DEV_BYPASS_ROLE } from '../config';
+import type { MeResponse, TokenPair, UserRole } from '../types/api';
 
 type AuthContextValue = {
   isReady: boolean;
@@ -10,7 +11,7 @@ type AuthContextValue = {
   user: MeResponse | null;
   tokens: TokenPair | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, role: UserRole) => Promise<void>;
   logout: () => Promise<void>;
   reloadMe: () => Promise<void>;
 };
@@ -59,6 +60,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     (async () => {
+      if (DEV_BYPASS_AUTH) {
+        setTokensState({
+          access_token: 'dev-access',
+          refresh_token: 'dev-refresh',
+          token_type: 'bearer',
+        });
+        setUser({
+          id: '00000000-0000-0000-0000-000000000001',
+          email: 'dev@local',
+          role: DEV_BYPASS_ROLE,
+        });
+        setReady(true);
+        return;
+      }
+
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       if (raw) {
         const saved = JSON.parse(raw) as TokenPair;
@@ -69,6 +85,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
+    if (DEV_BYPASS_AUTH) return;
     if (isReady && tokens) {
       void reloadMe();
     }
@@ -81,8 +98,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(me);
   }, [setTokens]);
 
-  const register = useCallback(async (email: string, password: string): Promise<void> => {
-    const pair = await authApi.register(email, password);
+  const register = useCallback(async (email: string, password: string, role: UserRole): Promise<void> => {
+    const pair = await authApi.register(email, password, role);
     await setTokens(pair);
     const me = await authApi.me();
     setUser(me);
