@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 
 from app.domain.employees.exceptions import NotFound
 from app.domain.employees.repositories import UNSET, DepartmentsRepository, EmployeesRepository
@@ -44,6 +45,7 @@ class EmployeesService:
         work_email: str | None,
         phone: str | None,
         position: str | None,
+        hire_date: date | None,
         department_ids: list[uuid.UUID],
     ):
         return await self._employees.create(
@@ -54,6 +56,7 @@ class EmployeesService:
             work_email=work_email.lower().strip() if work_email is not None else None,
             phone=phone.strip() if phone is not None else None,
             position=position.strip() if position is not None else None,
+            hire_date=hire_date,
             department_ids=department_ids,
         )
 
@@ -78,6 +81,12 @@ class EmployeesService:
             raise NotFound()
         return emp
 
+    async def get_my_employee(self, user_id: uuid.UUID):
+        emp = await self._employees.get_by_user_id(user_id)
+        if emp is None:
+            raise NotFound()
+        return emp
+
     async def update_employee(
         self,
         employee_id: uuid.UUID,
@@ -89,6 +98,7 @@ class EmployeesService:
         work_email: str | None | object,
         phone: str | None | object,
         position: str | None | object,
+        hire_date: date | None | object,
         is_active: bool | None,
         department_ids: list[uuid.UUID] | None,
     ):
@@ -110,6 +120,7 @@ class EmployeesService:
             work_email=work_email,
             phone=phone,
             position=position,
+            hire_date=hire_date,
             is_active=is_active,
             department_ids=department_ids,
         )

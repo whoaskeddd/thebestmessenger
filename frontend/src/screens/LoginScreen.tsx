@@ -8,6 +8,7 @@ import { colors } from '../theme/colors';
 import { fontFamilies, typography } from '../theme/typography';
 import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
+import { validateEmail } from '../utils/validation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -20,6 +21,11 @@ export const LoginScreen = (_props: Props) => {
   const onSubmit = async (): Promise<void> => {
     if (!email || !password) {
       Alert.alert('Ошибка', 'Введите email и пароль');
+      return;
+    }
+    const emailError = validateEmail(email);
+    if (emailError) {
+      Alert.alert('Проверьте email', emailError);
       return;
     }
 

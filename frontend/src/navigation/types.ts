@@ -8,5 +8,5 @@ export type RootStackParamList = {
   News: undefined;
   Tasks: undefined;
   Chats: undefined;
-  ChatRoom: { chatId: string; chatName: string } | undefined;
+  ChatRoom: { chatId: string; chatName?: string } | undefined;
 };

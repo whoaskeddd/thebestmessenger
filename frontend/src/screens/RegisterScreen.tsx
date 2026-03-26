@@ -6,6 +6,7 @@ import { AppBackground, InputField, LinkText, PrimaryButton, SubTitle, Title } f
 import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
 import type { UserRole } from '../types/api';
+import { validateEmail, validatePassword } from '../utils/validation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
@@ -23,8 +24,15 @@ export const RegisterScreen = ({ navigation }: Props) => {
       return;
     }
 
-    if (password.length < 8) {
-      Alert.alert('Ошибка', 'Пароль должен быть не менее 8 символов');
+    const emailError = validateEmail(email);
+    if (emailError) {
+      Alert.alert('Проверьте email', emailError);
+      return;
+    }
+
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      Alert.alert('Проверьте пароль', passwordError);
       return;
     }
 

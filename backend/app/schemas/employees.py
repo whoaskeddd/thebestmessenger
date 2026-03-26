@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -26,6 +27,7 @@ class EmployeeCreate(BaseModel):
     work_email: EmailStr | None = None
     phone: str | None = Field(default=None, max_length=32)
     position: str | None = Field(default=None, max_length=128)
+    hire_date: date | None = None
     department_ids: list[uuid.UUID] = Field(default_factory=list)
 
 
@@ -37,8 +39,17 @@ class EmployeeUpdate(BaseModel):
     work_email: EmailStr | None = None
     phone: str | None = Field(default=None, max_length=32)
     position: str | None = Field(default=None, max_length=128)
+    hire_date: date | None = None
     is_active: bool | None = None
     department_ids: list[uuid.UUID] | None = None
+
+
+class EmployeeSelfUpdate(BaseModel):
+    first_name: str | None = Field(default=None, min_length=1, max_length=64)
+    last_name: str | None = Field(default=None, min_length=1, max_length=64)
+    middle_name: str | None = Field(default=None, max_length=64)
+    phone: str | None = Field(default=None, max_length=32)
+    position: str | None = Field(default=None, max_length=128)
 
 
 class EmployeeResponse(BaseModel):
@@ -50,6 +61,6 @@ class EmployeeResponse(BaseModel):
     work_email: EmailStr | None
     phone: str | None
     position: str | None
+    hire_date: date | None
     is_active: bool
     departments: list[DepartmentResponse]
-

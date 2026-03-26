@@ -22,11 +22,22 @@ class ChatMemberResponse(BaseModel):
     user_id: uuid.UUID = Field(..., alias="userId")
 
 
+class MessagePreviewResponse(BaseModel):
+    id: uuid.UUID
+    sender_id: uuid.UUID = Field(..., alias="senderId")
+    sender_name: str = Field(..., alias="senderName")
+    message_type: MessageType = Field(..., alias="messageType")
+    body: str | None = None
+    created_at: datetime = Field(..., alias="createdAt")
+
+
 class ChatResponse(BaseModel):
     id: uuid.UUID
     chat_type: ChatType = Field(..., alias="chatType")
     title: str
     members: list[ChatMemberResponse]
+    unread_count: int = Field(default=0, alias="unreadCount")
+    last_message: MessagePreviewResponse | None = Field(default=None, alias="lastMessage")
     created_at: datetime = Field(..., alias="createdAt")
 
 
@@ -45,8 +56,9 @@ class MessageResponse(BaseModel):
     created_at: datetime = Field(..., alias="createdAt")
 
 
+
+
 class ChatReadResponse(BaseModel):
     chat_id: uuid.UUID = Field(..., alias="chatId")
     user_id: uuid.UUID = Field(..., alias="userId")
     read_at: datetime = Field(..., alias="readAt")
-

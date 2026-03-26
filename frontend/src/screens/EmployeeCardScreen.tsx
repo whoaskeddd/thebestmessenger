@@ -9,6 +9,8 @@ import type { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
 import { fontFamilies, typography } from '../theme/typography';
 import type { Department, Employee } from '../types/api';
+import { apiDateToDisplayDate } from '../utils/date';
+import { validatePassword } from '../utils/validation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EmployeeCard'>;
 
@@ -17,41 +19,57 @@ export const EmployeeCardScreen = ({ route, navigation }: Props) => {
   const isHr = user?.role === 'hr' || user?.role === 'admin';
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [isLoading, setLoading] = useState(true);
+
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<string[]>([]);
   const [isDeptPickerOpen, setDeptPickerOpen] = useState(false);
   const [deptQuery, setDeptQuery] = useState('');
-  const [isSaving, setSaving] = useState(false);
+  const [isSavingDepartments, setSavingDepartments] = useState(false);
+
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [middleName, setMiddleName] = useState('');
+  const [position, setPosition] = useState('');
+  const [phone, setPhone] = useState('');
+  const [isSavingProfile, setSavingProfile] = useState(false);
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isChangingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     (async () => {
-      if (!isHr) {
-        setLoading(false);
-        return;
-      }
       try {
         setLoading(true);
-        const employeeId = route.params?.employeeId;
 
-        if (employeeId) {
-          const [item, deps] = await Promise.all([
-            modulesApi.getEmployee(employeeId),
+        if (isHr) {
+          const employeeId = route.params?.employeeId;
+
+          if (employeeId) {
+            const [item, deps] = await Promise.all([
+              modulesApi.getEmployee(employeeId),
+              modulesApi.getDepartments({ limit: 200, offset: 0 }),
+            ]);
+            setEmployee(item);
+            setDepartments(deps);
+            setSelectedDepartmentIds((item.departments ?? []).map((d) => d.id));
+            return;
+          }
+
+          const [all, deps] = await Promise.all([
+            modulesApi.getEmployees(),
             modulesApi.getDepartments({ limit: 200, offset: 0 }),
           ]);
-          setEmployee(item);
+          const first = all[0] ?? null;
+          setEmployee(first);
           setDepartments(deps);
-          setSelectedDepartmentIds((item.departments ?? []).map((d) => d.id));
+          setSelectedDepartmentIds(first ? (first.departments ?? []).map((d) => d.id) : []);
           return;
         }
 
-        const [all, deps] = await Promise.all([
-          modulesApi.getEmployees(),
-          modulesApi.getDepartments({ limit: 200, offset: 0 }),
-        ]);
-        const first = all[0] ?? null;
-        setEmployee(first);
-        setDepartments(deps);
-        setSelectedDepartmentIds(first ? (first.departments ?? []).map((d) => d.id) : []);
+        const profile = await modulesApi.getMyEmployee();
+        setEmployee(profile);
       } catch (error) {
         Alert.alert('Ошибка загрузки', error instanceof Error ? error.message : 'Не удалось получить карточку сотрудника');
       } finally {
@@ -59,6 +77,15 @@ export const EmployeeCardScreen = ({ route, navigation }: Props) => {
       }
     })();
   }, [isHr, route.params?.employeeId]);
+
+  useEffect(() => {
+    if (!employee || isHr) return;
+    setFirstName(employee.first_name ?? '');
+    setLastName(employee.last_name ?? '');
+    setMiddleName(employee.middle_name ?? '');
+    setPosition(employee.position ?? '');
+    setPhone(employee.phone ?? '');
+  }, [employee, isHr]);
 
   const filteredDepartments = useMemo(() => {
     const q = deptQuery.trim().toLowerCase();
@@ -79,17 +106,77 @@ export const EmployeeCardScreen = ({ route, navigation }: Props) => {
 
   const saveDepartments = async (): Promise<void> => {
     if (!employee) return;
-    setSaving(true);
+    setSavingDepartments(true);
     try {
       const updated = await modulesApi.updateEmployee(employee.id, { department_ids: selectedDepartmentIds });
       setEmployee(updated);
       closeDeptPicker();
+      Alert.alert('Успешно', 'Отделы обновлены');
     } catch (error) {
       Alert.alert('Ошибка', error instanceof Error ? error.message : 'Не удалось обновить отделы');
     } finally {
-      setSaving(false);
+      setSavingDepartments(false);
     }
   };
+
+  const saveMyProfile = async (): Promise<void> => {
+    if (!employee) return;
+    if (!firstName.trim() || !lastName.trim()) {
+      Alert.alert('Проверьте поля', 'Имя и фамилия обязательны');
+      return;
+    }
+
+    setSavingProfile(true);
+    try {
+      const updated = await modulesApi.updateMyEmployee({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        middle_name: middleName.trim() || null,
+        position: position.trim() || null,
+        phone: phone.trim() || null,
+      });
+      setEmployee(updated);
+      Alert.alert('Успешно', 'Данные сотрудника сохранены');
+    } catch (error) {
+      Alert.alert('Ошибка', error instanceof Error ? error.message : 'Не удалось сохранить данные сотрудника');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const changePassword = async (): Promise<void> => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Проверьте поля', 'Заполните все поля для смены пароля');
+      return;
+    }
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      Alert.alert('Проверьте пароль', passwordError);
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Проверьте поле', 'Подтверждение пароля не совпадает');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await modulesApi.changeMyPassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      Alert.alert('Успешно', 'Пароль изменён');
+    } catch (error) {
+      Alert.alert('Ошибка', error instanceof Error ? error.message : 'Не удалось сменить пароль');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const title = isHr ? 'Карточка сотрудника' : 'Мой профиль';
 
   return (
     <AppScreen>
@@ -98,52 +185,129 @@ export const EmployeeCardScreen = ({ route, navigation }: Props) => {
           <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Text style={styles.backText}>‹</Text>
           </Pressable>
-          <Text style={styles.title}>Карточка сотрудника</Text>
+          <Text style={styles.title}>{title}</Text>
           <View style={{ width: 36 }} />
         </View>
 
-        {!isHr ? (
+        {isLoading ? <ActivityIndicator color={colors.primary} /> : null}
+
+        {!isLoading && !employee ? (
           <View style={styles.infoCard}>
-            <Text style={styles.meta}>Раздел доступен только для HR</Text>
+            <Text style={styles.meta}>{isHr ? 'Сотрудники пока не добавлены' : 'Профиль сотрудника не найден'}</Text>
           </View>
         ) : null}
 
-        {isHr && isLoading ? <ActivityIndicator color={colors.primary} /> : null}
-
-        {isHr && !isLoading && !employee ? (
-          <View style={styles.infoCard}>
-            <Text style={styles.meta}>Сотрудники пока не добавлены</Text>
-          </View>
-        ) : null}
-
-        {isHr && employee ? (
+        {employee ? (
           <>
             <View style={styles.profileCard}>
               <Text style={styles.name}>{employee.first_name} {employee.last_name}</Text>
-              <Text style={styles.role}>{employee.position ?? 'HR Business Partner'}</Text>
-              <Text style={styles.meta}>{employee.work_email ?? 'ivanov@company.com'}</Text>
-              <Text style={styles.meta}>{employee.phone ?? '+7 (900) 000-00-01'}</Text>
+              <Text style={styles.role}>{employee.position ?? 'Сотрудник'}</Text>
+              <Text style={styles.meta}>{employee.work_email ?? '—'}</Text>
+              <Text style={styles.meta}>{employee.phone ?? 'Телефон не указан'}</Text>
+              <Text style={styles.meta}>Дата найма: {apiDateToDisplayDate(employee.hire_date)}</Text>
             </View>
 
-            <View style={styles.infoCard}>
-              <Text style={styles.meta}>Отдел: {(employee.departments ?? []).map((dep) => dep.name).join(', ') || 'Не назначен'}</Text>
-              <Text style={styles.meta}>Руководитель: —</Text>
-              <Pressable style={styles.deptEditLink} onPress={() => setDeptPickerOpen(true)}>
-                <Text style={styles.deptEditText}>Изменить отделы</Text>
-              </Pressable>
-            </View>
+            {isHr ? (
+              <>
+                <View style={styles.infoCard}>
+                  <Text style={styles.meta}>Отдел: {(employee.departments ?? []).map((dep) => dep.name).join(', ') || 'Не назначен'}</Text>
+                  <Text style={styles.meta}>Руководитель: —</Text>
+                  <Pressable style={styles.deptEditLink} onPress={() => setDeptPickerOpen(true)}>
+                    <Text style={styles.deptEditText}>Изменить отделы</Text>
+                  </Pressable>
+                </View>
 
-            <View style={styles.actionsRow}>
-              <Pressable
-                style={[styles.action, styles.actionPrimary]}
-                onPress={() => navigation.navigate('ChatRoom', { chatId: employee.user_id ?? employee.id, chatName: `${employee.first_name} ${employee.last_name}` })}
-              >
-                <Text style={[styles.actionText, styles.actionTextPrimary]}>Написать</Text>
-              </Pressable>
-              <Pressable style={[styles.action, styles.actionOutline]} onPress={() => Alert.alert('MVP', 'Звонки появятся позже')}>
-                <Text style={[styles.actionText, styles.actionTextOutline]}>Позвонить</Text>
-              </Pressable>
-            </View>
+                <View style={styles.actionsRow}>
+                  <Pressable
+                    style={[styles.action, styles.actionPrimary]}
+                    onPress={() => navigation.navigate('ChatRoom', { chatId: employee.user_id ?? employee.id, chatName: `${employee.first_name} ${employee.last_name}` })}
+                  >
+                    <Text style={[styles.actionText, styles.actionTextPrimary]}>Написать</Text>
+                  </Pressable>
+                  <Pressable style={[styles.action, styles.actionOutline]} onPress={() => Alert.alert('MVP', 'Звонки появятся позже')}>
+                    <Text style={[styles.actionText, styles.actionTextOutline]}>Позвонить</Text>
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.editCard}>
+                  <Text style={styles.sectionTitle}>Личные данные</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    placeholder="Имя"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    value={lastName}
+                    onChangeText={setLastName}
+                    placeholder="Фамилия"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    value={middleName}
+                    onChangeText={setMiddleName}
+                    placeholder="Отчество (необязательно)"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    value={position}
+                    onChangeText={setPosition}
+                    placeholder="Должность"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    value={phone}
+                    onChangeText={setPhone}
+                    placeholder="Телефон"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="phone-pad"
+                  />
+
+                  <Pressable style={styles.saveBtn} onPress={() => void saveMyProfile()} disabled={isSavingProfile}>
+                    <Text style={styles.saveBtnText}>{isSavingProfile ? 'Сохраняю...' : 'Сохранить данные'}</Text>
+                  </Pressable>
+                </View>
+
+                <View style={styles.editCard}>
+                  <Text style={styles.sectionTitle}>Смена пароля</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    placeholder="Текущий пароль"
+                    placeholderTextColor={colors.textMuted}
+                    secureTextEntry
+                  />
+                  <TextInput
+                    style={styles.input}
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    placeholder="Новый пароль"
+                    placeholderTextColor={colors.textMuted}
+                    secureTextEntry
+                  />
+                  <TextInput
+                    style={styles.input}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder="Повторите новый пароль"
+                    placeholderTextColor={colors.textMuted}
+                    secureTextEntry
+                  />
+
+                  <Pressable style={styles.passwordBtn} onPress={() => void changePassword()} disabled={isChangingPassword}>
+                    <Text style={styles.passwordBtnText}>{isChangingPassword ? 'Сохраняю...' : 'Сменить пароль'}</Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
           </>
         ) : null}
 
@@ -184,8 +348,8 @@ export const EmployeeCardScreen = ({ route, navigation }: Props) => {
                 ListEmptyComponent={<Text style={styles.meta}>Отделы не найдены</Text>}
               />
 
-              <Pressable style={styles.modalDone} onPress={() => void saveDepartments()} disabled={isSaving}>
-                <Text style={styles.modalDoneText}>{isSaving ? 'Сохраняю...' : 'Сохранить'}</Text>
+              <Pressable style={styles.modalDone} onPress={() => void saveDepartments()} disabled={isSavingDepartments}>
+                <Text style={styles.modalDoneText}>{isSavingDepartments ? 'Сохраняю...' : 'Сохранить'}</Text>
               </Pressable>
             </View>
           </View>
@@ -201,11 +365,27 @@ const styles = StyleSheet.create({
   backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   backText: { color: colors.textPrimary, fontFamily: fontFamilies.primary, fontSize: 22, marginTop: -2 },
   title: { ...typography.title, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontSize: 24 },
+  sectionTitle: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '700' },
   profileCard: { borderRadius: 16, backgroundColor: colors.cardSoft, padding: 14, gap: 6 },
   infoCard: { borderRadius: 16, backgroundColor: colors.primarySoft, padding: 14, gap: 6 },
+  editCard: { borderRadius: 16, backgroundColor: colors.surface, padding: 14, gap: 10 },
   name: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '700' },
   role: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textSecondary, fontWeight: '600' },
   meta: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textSecondary },
+  input: {
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 12,
+    color: colors.textPrimary,
+    fontFamily: fontFamilies.primary,
+  },
+  saveBtn: { height: 44, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  saveBtnText: { ...typography.button, fontFamily: fontFamilies.primary, color: colors.surface, fontWeight: '700' },
+  passwordBtn: { height: 44, borderRadius: 12, backgroundColor: colors.actionBlue, alignItems: 'center', justifyContent: 'center' },
+  passwordBtnText: { ...typography.button, fontFamily: fontFamilies.primary, color: colors.surface, fontWeight: '700' },
   deptEditLink: { marginTop: 6, alignSelf: 'flex-start' },
   deptEditText: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.actionBlue, fontWeight: '700' },
   actionsRow: { flexDirection: 'row', gap: 12 },

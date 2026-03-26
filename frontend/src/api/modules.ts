@@ -1,5 +1,7 @@
 import type {
   Announcement,
+  Chat,
+  ChatMessage,
   AnnouncementCreatePayload,
   Department,
   DepartmentCreatePayload,
@@ -61,7 +63,7 @@ export const modulesApi = {
   },
 
   async getEmployees(search?: string): Promise<Employee[]> {
-    const query = new URLSearchParams({ limit: '50', offset: '0' });
+    const query = new URLSearchParams({ limit: '200', offset: '0' });
     if (search?.trim()) query.set('search', search.trim());
     const data = await authApi.request<Employee[]>(`/employees?${query.toString()}`);
     return Array.isArray(data) ? data : [];
@@ -78,8 +80,21 @@ export const modulesApi = {
     return authApi.request<Employee>(`/employees/${employeeId}`);
   },
 
+  async getMyEmployee(): Promise<Employee> {
+    return authApi.request<Employee>('/employees/me');
+  },
+
   async updateEmployee(employeeId: string, payload: EmployeeUpdatePayload): Promise<Employee> {
     return authApi.request<Employee>(`/employees/${employeeId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async updateMyEmployee(
+    payload: Pick<EmployeeUpdatePayload, 'first_name' | 'last_name' | 'middle_name' | 'phone' | 'position'>,
+  ): Promise<Employee> {
+    return authApi.request<Employee>('/employees/me', {
       method: 'PATCH',
       body: JSON.stringify(payload),
     });
@@ -106,6 +121,7 @@ export const modulesApi = {
       work_email: payload.work_email ?? payload.email,
       phone: payload.phone ?? null,
       position: payload.position ?? null,
+      hire_date: payload.hire_date ?? null,
       department_ids: payload.department_ids ?? [],
     });
   },
@@ -225,5 +241,55 @@ export const modulesApi = {
   async markMyTasksSeen(): Promise<number> {
     const data = await authApi.request<{ count?: number }>('/hr-tasks/my/mark-seen', { method: 'POST' });
     return typeof data?.count === 'number' ? data.count : 0;
+  },
+
+  async changeMyPassword(payload: { current_password: string; new_password: string }): Promise<void> {
+    await authApi.request<void>('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getChats(params?: { limit?: number; offset?: number }): Promise<Chat[]> {
+    const query = new URLSearchParams({
+      limit: String(params?.limit ?? 200),
+      offset: String(params?.offset ?? 0),
+    });
+    const data = await authApi.request<Chat[]>(`/chats?${query.toString()}`);
+    return Array.isArray(data) ? data : [];
+  },
+
+  async getChat(chatId: string): Promise<Chat> {
+    return authApi.request<Chat>(`/chats/${chatId}`);
+  },
+
+  async createDirectChat(otherUserId: string): Promise<Chat> {
+    return authApi.request<Chat>('/chats', {
+      method: 'POST',
+      body: JSON.stringify({
+        chatType: 'direct',
+        otherUserId,
+      }),
+    });
+  },
+
+  async getChatMessages(chatId: string, params?: { limit?: number; before?: string }): Promise<ChatMessage[]> {
+    const query = new URLSearchParams({
+      limit: String(params?.limit ?? 100),
+    });
+    if (params?.before) query.set('before', params.before);
+    const data = await authApi.request<ChatMessage[]>(`/chats/${chatId}/messages?${query.toString()}`);
+    return Array.isArray(data) ? data : [];
+  },
+
+  async sendChatMessage(chatId: string, body: string): Promise<ChatMessage> {
+    return authApi.request<ChatMessage>(`/chats/${chatId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    });
+  },
+
+  async markChatRead(chatId: string): Promise<void> {
+    await authApi.request(`/chats/${chatId}/read`, { method: 'POST' });
   },
 };

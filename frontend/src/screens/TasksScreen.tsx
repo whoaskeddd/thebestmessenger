@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
 import { fontFamilies, typography } from '../theme/typography';
 import type { Employee, HrTask } from '../types/api';
+import { apiDateToDisplayDate, displayDateToApiDate, formatDateInput } from '../utils/date';
 
 export const TasksScreen = () => {
   const { user } = useAuth();
@@ -73,13 +74,18 @@ export const TasksScreen = () => {
       Alert.alert('Проверьте поля', 'Выберите как минимум одного исполнителя');
       return;
     }
+    const apiDueDate = dueDate.trim() ? displayDateToApiDate(dueDate.trim()) : null;
+    if (dueDate.trim() && !apiDueDate) {
+      Alert.alert('Проверьте поле', 'Введите корректную дату срока в формате ДД.ММ.ГГГГ');
+      return;
+    }
 
     setSubmitting(true);
     try {
       await modulesApi.createTask({
         title: title.trim(),
         description: description.trim() || null,
-        due_date: dueDate.trim() || null,
+        due_date: apiDueDate,
         announcement_id: null,
         assignee_user_ids: selectedAssigneeIds,
       });
@@ -145,7 +151,14 @@ export const TasksScreen = () => {
               <Text style={styles.sectionTitle}>Создать задачу</Text>
               <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Заголовок" placeholderTextColor={colors.textMuted} />
               <TextInput style={styles.input} value={description} onChangeText={setDescription} placeholder="Описание (необязательно)" placeholderTextColor={colors.textMuted} />
-              <TextInput style={styles.input} value={dueDate} onChangeText={setDueDate} placeholder="Срок (YYYY-MM-DD)" placeholderTextColor={colors.textMuted} />
+              <TextInput
+                style={styles.input}
+                value={dueDate}
+                onChangeText={(value) => setDueDate(formatDateInput(value))}
+                placeholder="Срок (ДД.ММ.ГГГГ)"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="number-pad"
+              />
               <Pressable style={styles.pickerBtn} onPress={() => setPickerOpen(true)}>
                 <Text style={styles.pickerText}>{selectedAssigneesLabel}</Text>
                 {selectedAssigneeIds.length ? <Text style={styles.pickerMeta}>Выбрано: {selectedAssigneeIds.length}</Text> : null}
@@ -167,7 +180,7 @@ export const TasksScreen = () => {
               <View key={task.id} style={styles.taskRow}>
                 <Text style={styles.taskTitle}>{task.title}</Text>
                 <Text style={styles.taskMeta}>{task.description ?? 'Без описания'}</Text>
-                {task.due_date ? <Text style={styles.taskMeta}>Срок: {task.due_date}</Text> : null}
+                {task.due_date ? <Text style={styles.taskMeta}>Срок: {apiDateToDisplayDate(task.due_date)}</Text> : null}
                 {!isHr ? (
                   <Pressable style={styles.secondaryBtn} onPress={() => void onComplete(task.id)}>
                     <Text style={styles.secondaryText}>Отметить выполненной</Text>

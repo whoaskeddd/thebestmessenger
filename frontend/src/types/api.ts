@@ -23,6 +23,7 @@ export type Employee = {
   last_name: string;
   middle_name?: string | null;
   position?: string | null;
+  hire_date?: string | null;
   work_email?: string | null;
   phone?: string | null;
   is_active?: boolean;
@@ -90,6 +91,7 @@ export type EmployeeCreatePayload = {
   work_email?: string | null;
   phone?: string | null;
   position?: string | null;
+  hire_date?: string | null;
   department_ids?: string[];
 };
 
@@ -101,6 +103,7 @@ export type EmployeeUpdatePayload = {
   work_email?: string | null;
   phone?: string | null;
   position?: string | null;
+  hire_date?: string | null;
   is_active?: boolean | null;
   department_ids?: string[] | null;
 };
@@ -114,6 +117,7 @@ export type EmployeeProvisionPayload = {
   work_email?: string | null;
   phone?: string | null;
   position?: string | null;
+  hire_date?: string | null;
   department_ids?: string[];
 };
 
@@ -146,4 +150,41 @@ export type LeaveRequestEvent = {
   to_status: LeaveRequestStatus;
   comment?: string | null;
   created_at: string;
+};
+
+export type ChatType = 'direct' | 'group';
+export type ChatMessageType = 'text' | 'voice';
+
+export type ChatMember = {
+  userId: string;
+};
+
+export type ChatMessagePreview = {
+  id: string;
+  senderId: string;
+  senderName: string;
+  messageType: ChatMessageType;
+  body?: string | null;
+  createdAt: string;
+};
+
+export type Chat = {
+  id: string;
+  chatType: ChatType;
+  title: string;
+  members: ChatMember[];
+  unreadCount: number;
+  lastMessage?: ChatMessagePreview | null;
+  createdAt: string;
+};
+
+export type ChatMessage = {
+  id: string;
+  chatId: string;
+  senderId: string;
+  senderName: string;
+  messageType: ChatMessageType;
+  body?: string | null;
+  voiceUrl?: string | null;
+  createdAt: string;
 };

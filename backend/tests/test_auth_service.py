@@ -6,7 +6,12 @@ import pytest
 
 from app.core.config import Settings
 from app.core.security import decode_access_token
-from app.domain.auth.exceptions import EmailAlreadyExists, InvalidCredentials, InvalidRefreshToken
+from app.domain.auth.exceptions import (
+    EmailAlreadyExists,
+    InvalidCredentials,
+    InvalidCurrentPassword,
+    InvalidRefreshToken,
+)
 from app.domain.auth.use_cases import AuthService
 
 
@@ -53,6 +58,14 @@ class FakeUsersRepo:
         self._by_id[user.id] = user
         return user
 
+    async def update_password_hash(self, user_id: uuid.UUID, *, password_hash: str) -> bool:
+        user = self._by_id.get(user_id)
+        if user is None:
+            return False
+        user.password_hash = password_hash
+        user.token_version += 1
+        return True
+
 
 class FakeRefreshRepo:
     def __init__(self) -> None:
@@ -91,11 +104,11 @@ async def test_register_and_login_and_refresh() -> None:
     )
     service = AuthService(users=users, refresh_sessions=refresh, settings=settings)
 
-    tokens = await service.register(email="a@b.com", password="password123")
+    tokens = await service.register(email="a@b.com", password="Password123")
     payload = decode_access_token(tokens["access_token"], settings=settings)
     assert payload.email == "a@b.com"
 
-    tokens2 = await service.login(email="a@b.com", password="password123")
+    tokens2 = await service.login(email="a@b.com", password="Password123")
     assert "access_token" in tokens2 and "refresh_token" in tokens2
 
     tokens3 = await service.refresh(refresh_token=tokens2["refresh_token"])
@@ -109,9 +122,9 @@ async def test_register_duplicate_email() -> None:
     settings = Settings(JWT_SECRET_KEY="test", JWT_ALGORITHM="HS256")
     service = AuthService(users=users, refresh_sessions=refresh, settings=settings)
 
-    await service.register(email="a@b.com", password="password123")
+    await service.register(email="a@b.com", password="Password123")
     with pytest.raises(EmailAlreadyExists):
-        await service.register(email="a@b.com", password="password123")
+        await service.register(email="a@b.com", password="Password123")
 
 
 @pytest.mark.asyncio
@@ -121,7 +134,7 @@ async def test_login_invalid_credentials() -> None:
     settings = Settings(JWT_SECRET_KEY="test", JWT_ALGORITHM="HS256")
     service = AuthService(users=users, refresh_sessions=refresh, settings=settings)
 
-    await service.register(email="a@b.com", password="password123")
+    await service.register(email="a@b.com", password="Password123")
     with pytest.raises(InvalidCredentials):
         await service.login(email="a@b.com", password="wrong")
 
@@ -135,3 +148,46 @@ async def test_refresh_invalid_token() -> None:
 
     with pytest.raises(InvalidRefreshToken):
         await service.refresh(refresh_token="nope")
+
+
+@pytest.mark.asyncio
+async def test_change_password_success() -> None:
+    users = FakeUsersRepo()
+    refresh = FakeRefreshRepo()
+    settings = Settings(JWT_SECRET_KEY="test", JWT_ALGORITHM="HS256")
+    service = AuthService(users=users, refresh_sessions=refresh, settings=settings)
+
+    await service.register(email="a@b.com", password="Password123")
+    user = await users.get_by_email("a@b.com")
+    assert user is not None
+
+    await service.change_password(
+        user_id=user.id,
+        current_password="Password123",
+        new_password="new-password-123",
+    )
+
+    with pytest.raises(InvalidCredentials):
+        await service.login(email="a@b.com", password="Password123")
+
+    tokens = await service.login(email="a@b.com", password="new-password-123")
+    assert "access_token" in tokens
+
+
+@pytest.mark.asyncio
+async def test_change_password_invalid_current_password() -> None:
+    users = FakeUsersRepo()
+    refresh = FakeRefreshRepo()
+    settings = Settings(JWT_SECRET_KEY="test", JWT_ALGORITHM="HS256")
+    service = AuthService(users=users, refresh_sessions=refresh, settings=settings)
+
+    await service.register(email="a@b.com", password="Password123")
+    user = await users.get_by_email("a@b.com")
+    assert user is not None
+
+    with pytest.raises(InvalidCurrentPassword):
+        await service.change_password(
+            user_id=user.id,
+            current_password="wrong-password",
+            new_password="new-password-123",
+        )

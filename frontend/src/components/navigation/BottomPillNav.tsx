@@ -1,8 +1,10 @@
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { ComponentType } from 'react';
+import { useCallback, useState, type ComponentType } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { modulesApi } from '../../api/modules';
+import { useAuth } from '../../context/AuthContext';
 import { colors } from '../../theme/colors';
 import { fontFamilies, typography } from '../../theme/typography';
 import type { RootStackParamList } from '../../navigation/types';
@@ -26,8 +28,35 @@ const items: Array<{ key: string; route: RouteName; label: string; Icon: Compone
 export function BottomPillNav({ activeRoute }: { activeRoute?: RouteName }) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute();
+  const { user } = useAuth();
+  const isHr = user?.role === 'hr' || user?.role === 'admin';
+  const [badges, setBadges] = useState({ leaves: 0, tasks: 0, chats: 0 });
 
   const current = (activeRoute ?? (route.name as RouteName)) as RouteName;
+
+  const loadBadges = useCallback(async (): Promise<void> => {
+    try {
+      const [tasks, leaves, chats] = await Promise.all([
+        modulesApi.getNewMyTasksCount().catch(() => 0),
+        isHr ? modulesApi.getUnreadLeaveRequestsCount().catch(() => 0) : Promise.resolve(0),
+        modulesApi.getChats({ limit: 200, offset: 0 }).catch(() => []),
+      ]);
+      const unreadChats = chats.reduce((sum, chat) => sum + (chat.unreadCount ?? 0), 0);
+      setBadges({ tasks, leaves, chats: unreadChats });
+    } catch {
+      // ignore badge loading issues
+    }
+  }, [isHr]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadBadges();
+      const timer = setInterval(() => {
+        void loadBadges();
+      }, 15000);
+      return () => clearInterval(timer);
+    }, [loadBadges]),
+  );
 
   return (
     <View style={styles.wrap}>
@@ -43,6 +72,9 @@ export function BottomPillNav({ activeRoute }: { activeRoute?: RouteName }) {
             >
               <View style={styles.iconWrap}>
                 <item.Icon width={16} height={16} color={iconColor} />
+                {item.route === 'Leaves' && badges.leaves > 0 ? <Badge value={badges.leaves} /> : null}
+                {item.route === 'Tasks' && badges.tasks > 0 ? <Badge value={badges.tasks} /> : null}
+                {item.route === 'Chats' && badges.chats > 0 ? <Badge value={badges.chats} /> : null}
               </View>
               <Text style={[styles.label, isActive && styles.labelActive]}>{item.label}</Text>
             </Pressable>
@@ -52,6 +84,12 @@ export function BottomPillNav({ activeRoute }: { activeRoute?: RouteName }) {
     </View>
   );
 }
+
+const Badge = ({ value }: { value: number }) => (
+  <View style={styles.badge}>
+    <Text style={styles.badgeText}>{value > 99 ? '99+' : value}</Text>
+  </View>
+);
 
 const styles = StyleSheet.create({
   wrap: {
@@ -84,6 +122,7 @@ const styles = StyleSheet.create({
     height: 18,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
   },
   label: {
     ...typography.caption,
@@ -96,5 +135,25 @@ const styles = StyleSheet.create({
   },
   labelActive: {
     color: colors.surface,
+  },
+  badge: {
+    position: 'absolute',
+    top: -8,
+    right: -12,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    ...typography.caption,
+    fontFamily: fontFamilies.primary,
+    color: colors.surface,
+    fontSize: 9,
+    fontWeight: '700',
+    lineHeight: 10,
   },
 });

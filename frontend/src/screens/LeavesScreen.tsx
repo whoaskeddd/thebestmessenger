@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,7 +17,8 @@ import { BottomPillNav } from '../components/navigation/BottomPillNav';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
 import { fontFamilies, typography } from '../theme/typography';
-import type { LeaveRequest, LeaveRequestType } from '../types/api';
+import type { Employee, LeaveRequest, LeaveRequestType } from '../types/api';
+import { apiDateToDisplayDate, displayDateToApiDate, formatDateInput } from '../utils/date';
 
 const DEFAULT_TYPE: LeaveRequestType = 'vacation';
 
@@ -24,9 +26,12 @@ export const LeavesScreen = () => {
   const { user } = useAuth();
   const isHr = user?.role === 'hr' || user?.role === 'admin';
   const [items, setItems] = useState<LeaveRequest[]>([]);
+  const [employeesByUserId, setEmployeesByUserId] = useState<Record<string, string>>({});
   const [isLoading, setLoading] = useState(true);
   const [isSubmitting, setSubmitting] = useState(false);
-  const [reviewComment, setReviewComment] = useState('');
+  const [isRejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectRequestId, setRejectRequestId] = useState<string | null>(null);
+  const [rejectComment, setRejectComment] = useState('');
 
   const [requestType, setRequestType] = useState<LeaveRequestType>(DEFAULT_TYPE);
   const [startDate, setStartDate] = useState('');
@@ -38,6 +43,10 @@ export const LeavesScreen = () => {
       setLoading(true);
       const data = await modulesApi.getLeaveRequests();
       setItems(data);
+      if (isHr) {
+        const employees = await modulesApi.getEmployees();
+        setEmployeesByUserId(createEmployeeNameMap(employees));
+      }
       if (isHr) {
         try {
           await modulesApi.markLeaveRequestsRead();
@@ -58,8 +67,10 @@ export const LeavesScreen = () => {
 
   const submit = async (): Promise<void> => {
     if (isHr) return;
-    if (!startDate || !endDate) {
-      Alert.alert('Проверьте поля', 'Введите дату начала и окончания в формате YYYY-MM-DD');
+    const apiStartDate = displayDateToApiDate(startDate);
+    const apiEndDate = displayDateToApiDate(endDate);
+    if (!apiStartDate || !apiEndDate) {
+      Alert.alert('Проверьте поля', 'Введите корректные даты в формате ДД.ММ.ГГГГ');
       return;
     }
 
@@ -67,8 +78,8 @@ export const LeavesScreen = () => {
     try {
       await modulesApi.createLeaveRequest({
         request_type: requestType,
-        start_date: startDate,
-        end_date: endDate,
+        start_date: apiStartDate,
+        end_date: apiEndDate,
         reason: reason.trim() || null,
       });
       setStartDate('');
@@ -84,27 +95,41 @@ export const LeavesScreen = () => {
 
   const approve = async (requestId: string): Promise<void> => {
     try {
-      await modulesApi.approveLeaveRequest(requestId, reviewComment.trim() || null);
-      setReviewComment('');
+      await modulesApi.approveLeaveRequest(requestId, null);
       await load();
     } catch (error) {
       Alert.alert('Ошибка', error instanceof Error ? error.message : 'Не удалось согласовать заявку');
     }
   };
 
-  const reject = async (requestId: string): Promise<void> => {
-    const comment = reviewComment.trim();
+  const reject = async (): Promise<void> => {
+    if (!rejectRequestId) return;
+    const comment = rejectComment.trim();
     if (!comment) {
       Alert.alert('Проверьте поля', 'Для отклонения нужен комментарий HR');
       return;
     }
     try {
-      await modulesApi.rejectLeaveRequest(requestId, comment);
-      setReviewComment('');
+      await modulesApi.rejectLeaveRequest(rejectRequestId, comment);
+      setRejectComment('');
+      setRejectRequestId(null);
+      setRejectModalOpen(false);
       await load();
     } catch (error) {
       Alert.alert('Ошибка', error instanceof Error ? error.message : 'Не удалось отклонить заявку');
     }
+  };
+
+  const openRejectModal = (requestId: string): void => {
+    setRejectRequestId(requestId);
+    setRejectComment('');
+    setRejectModalOpen(true);
+  };
+
+  const closeRejectModal = (): void => {
+    setRejectModalOpen(false);
+    setRejectRequestId(null);
+    setRejectComment('');
   };
 
   return (
@@ -123,8 +148,8 @@ export const LeavesScreen = () => {
               <Text style={styles.sectionTitle}>Новая заявка</Text>
 
               <View style={styles.fieldRow}>
-                <Field value={startDate} onChangeText={setStartDate} placeholder="Дата начала" />
-                <Field value={endDate} onChangeText={setEndDate} placeholder="Дата окончания" />
+                <Field value={startDate} onChangeText={(value) => setStartDate(formatDateInput(value))} placeholder="Дата начала (ДД.ММ.ГГГГ)" />
+                <Field value={endDate} onChangeText={(value) => setEndDate(formatDateInput(value))} placeholder="Дата окончания (ДД.ММ.ГГГГ)" />
               </View>
 
               <View style={styles.typesRow}>
@@ -142,7 +167,7 @@ export const LeavesScreen = () => {
           ) : (
             <View style={styles.newReq}>
               <Text style={styles.sectionTitle}>Панель HR</Text>
-              <Field value={reviewComment} onChangeText={setReviewComment} placeholder="Комментарий для решения по заявкам" />
+              <Text style={styles.hint}>Отклонение заявки требует комментария. Комментарий вводится при нажатии «Отклонить».</Text>
             </View>
           )}
 
@@ -161,6 +186,8 @@ export const LeavesScreen = () => {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.historyTitle}>{typeLabel[item.request_type] ?? item.request_type}</Text>
                     <Text style={styles.historyMeta}>{formatPeriod(item.start_date, item.end_date)}</Text>
+                    {isHr ? <Text style={styles.historyMeta}>Создал: {employeesByUserId[item.user_id] ?? item.user_id}</Text> : null}
+                    {item.hr_comment ? <Text style={styles.commentText}>Комментарий HR: {item.hr_comment}</Text> : null}
                   </View>
                   <Text style={[styles.status, statusColor[item.status] ?? styles.statusDefault]}>
                     {statusLabel[item.status] ?? item.status}
@@ -171,7 +198,7 @@ export const LeavesScreen = () => {
                     <Pressable style={styles.approveBtn} onPress={() => void approve(item.id)}>
                       <Text style={styles.reviewText}>Одобрить</Text>
                     </Pressable>
-                    <Pressable style={styles.rejectBtn} onPress={() => void reject(item.id)}>
+                    <Pressable style={styles.rejectBtn} onPress={() => openRejectModal(item.id)}>
                       <Text style={styles.reviewText}>Отклонить</Text>
                     </Pressable>
                   </View>
@@ -180,6 +207,30 @@ export const LeavesScreen = () => {
             ))}
           </View>
         </ScrollView>
+
+        <Modal visible={isRejectModalOpen} transparent animationType="fade" onRequestClose={closeRejectModal}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Комментарий к отклонению</Text>
+              <TextInput
+                style={[styles.field, styles.rejectInput]}
+                value={rejectComment}
+                onChangeText={setRejectComment}
+                placeholder="Укажите причину отказа"
+                placeholderTextColor={colors.textMuted}
+                multiline
+              />
+              <View style={styles.modalActions}>
+                <Pressable style={styles.modalSecondaryBtn} onPress={closeRejectModal}>
+                  <Text style={styles.modalSecondaryText}>Отмена</Text>
+                </Pressable>
+                <Pressable style={styles.modalPrimaryBtn} onPress={() => void reject()}>
+                  <Text style={styles.modalPrimaryText}>Отклонить</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         <BottomPillNav activeRoute="Leaves" />
       </View>
@@ -212,6 +263,7 @@ const styles = StyleSheet.create({
   iconBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   iconText: { color: colors.textSecondary, fontSize: 18, fontFamily: fontFamilies.primary },
   sectionTitle: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '700' },
+  hint: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textSecondary },
   newReq: { borderRadius: 16, backgroundColor: colors.cardStrong, padding: 14, gap: 10 },
   fieldRow: { flexDirection: 'row', gap: 10 },
   typesRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
@@ -245,6 +297,7 @@ const styles = StyleSheet.create({
   historyRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   historyTitle: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '700' },
   historyMeta: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textSecondary },
+  commentText: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textPrimary, marginTop: 4 },
   status: { ...typography.caption, fontFamily: fontFamilies.primary, fontWeight: '700' },
   statusOk: { color: colors.textSecondary },
   statusBad: { color: colors.danger },
@@ -255,6 +308,24 @@ const styles = StyleSheet.create({
   approveBtn: { flex: 1, height: 38, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   rejectBtn: { flex: 1, height: 38, borderRadius: 12, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center' },
   reviewText: { ...typography.button, fontFamily: fontFamilies.primary, color: colors.surface, fontSize: 13 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', padding: 20, justifyContent: 'center' },
+  modalCard: { borderRadius: 16, backgroundColor: colors.surface, padding: 14, gap: 10 },
+  modalTitle: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '700' },
+  rejectInput: { minHeight: 96, textAlignVertical: 'top', paddingTop: 10, paddingBottom: 10 },
+  modalActions: { flexDirection: 'row', gap: 10 },
+  modalSecondaryBtn: {
+    flex: 1,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalPrimaryBtn: { flex: 1, height: 42, borderRadius: 12, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center' },
+  modalSecondaryText: { ...typography.button, fontFamily: fontFamilies.primary, color: colors.textPrimary },
+  modalPrimaryText: { ...typography.button, fontFamily: fontFamilies.primary, color: colors.surface },
 });
 
 const statusColor = {
@@ -279,6 +350,15 @@ const typeLabel: Record<string, string> = {
 
 function formatPeriod(start: string, end: string): string {
   if (!start && !end) return '—';
-  if (!end) return start;
-  return `${start} — ${end}`;
+  if (!end) return apiDateToDisplayDate(start);
+  return `${apiDateToDisplayDate(start)} — ${apiDateToDisplayDate(end)}`;
+}
+
+function createEmployeeNameMap(employees: Employee[]): Record<string, string> {
+  return employees.reduce<Record<string, string>>((acc, employee) => {
+    if (!employee.user_id) return acc;
+    const fullName = `${employee.first_name ?? ''} ${employee.last_name ?? ''}`.trim();
+    acc[employee.user_id] = fullName || employee.work_email || employee.user_id;
+    return acc;
+  }, {});
 }

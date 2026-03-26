@@ -1,5 +1,6 @@
 import uuid
 from dataclasses import dataclass
+from datetime import date
 
 import pytest
 
@@ -23,6 +24,7 @@ class Employee:
     work_email: str | None
     phone: str | None
     position: str | None
+    hire_date: date | None
     is_active: bool
     departments: list[Department]
 
@@ -72,6 +74,7 @@ class FakeEmployeesRepo:
         work_email,
         phone,
         position,
+        hire_date,
         department_ids,
     ) -> Employee:
         departments = [self._deps._deps[d] for d in department_ids if d in self._deps._deps]
@@ -84,6 +87,7 @@ class FakeEmployeesRepo:
             work_email=work_email,
             phone=phone,
             position=position,
+            hire_date=hire_date,
             is_active=True,
             departments=departments,
         )
@@ -92,6 +96,12 @@ class FakeEmployeesRepo:
 
     async def get(self, employee_id: uuid.UUID) -> Employee | None:
         return self._emps.get(employee_id)
+
+    async def get_by_user_id(self, user_id: uuid.UUID) -> Employee | None:
+        for employee in self._emps.values():
+            if employee.user_id == user_id:
+                return employee
+        return None
 
     async def list(self, *, search: str | None, department_id, limit: int, offset: int):
         items = list(self._emps.values())
@@ -120,6 +130,7 @@ class FakeEmployeesRepo:
         work_email,
         phone,
         position,
+        hire_date,
         is_active,
         department_ids,
     ) -> Employee | None:
@@ -140,6 +151,8 @@ class FakeEmployeesRepo:
             emp.phone = phone
         if position is not UNSET:
             emp.position = position
+        if hire_date is not UNSET:
+            emp.hire_date = hire_date
         if is_active is not None:
             emp.is_active = is_active
         if department_ids is not None:
@@ -165,6 +178,7 @@ async def test_create_employee_normalizes_fields_and_update_unset() -> None:
         work_email="IVAN@EXAMPLE.COM",
         phone="  +7999 ",
         position=" Dev ",
+        hire_date=None,
         department_ids=[dep.id],
     )
     assert emp.first_name == "Ivan"
@@ -182,6 +196,7 @@ async def test_create_employee_normalizes_fields_and_update_unset() -> None:
         work_email=UNSET,
         phone=UNSET,
         position=UNSET,
+        hire_date=UNSET,
         is_active=None,
         department_ids=None,
     )
@@ -205,6 +220,7 @@ async def test_list_employees_filter_by_department() -> None:
         work_email="ivan@example.com",
         phone=None,
         position=None,
+        hire_date=None,
         department_ids=[dep_hr.id],
     )
     await service.create_employee(
@@ -215,10 +231,10 @@ async def test_list_employees_filter_by_department() -> None:
         work_email="petr@example.com",
         phone=None,
         position=None,
+        hire_date=None,
         department_ids=[dep_it.id],
     )
 
     only_hr = await service.list_employees(search=None, department_id=dep_hr.id, limit=50, offset=0)
     assert len(only_hr) == 1
     assert only_hr[0].work_email == "ivan@example.com"
-

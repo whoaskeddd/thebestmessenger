@@ -20,6 +20,8 @@ import type { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
 import { fontFamilies, typography } from '../theme/typography';
 import type { Department, Employee } from '../types/api';
+import { apiDateToDisplayDate, displayDateToApiDate, formatDateInput } from '../utils/date';
+import { validateEmail, validatePassword } from '../utils/validation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Employees'>;
 
@@ -34,6 +36,7 @@ export const EmployeesScreen = ({ navigation }: Props) => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [position, setPosition] = useState('');
+  const [hireDate, setHireDate] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -102,8 +105,19 @@ export const EmployeesScreen = ({ navigation }: Props) => {
       Alert.alert('Проверьте поля', 'Заполните имя, фамилию, email и пароль');
       return;
     }
-    if (password.trim().length < 8) {
-      Alert.alert('Проверьте пароль', 'Минимум 8 символов');
+    const emailError = validateEmail(email);
+    if (emailError) {
+      Alert.alert('Проверьте email', emailError);
+      return;
+    }
+    const passwordError = validatePassword(password.trim());
+    if (passwordError) {
+      Alert.alert('Проверьте пароль', passwordError);
+      return;
+    }
+    const apiHireDate = hireDate.trim() ? displayDateToApiDate(hireDate.trim()) : null;
+    if (hireDate.trim() && !apiHireDate) {
+      Alert.alert('Проверьте дату', 'Дата найма должна быть в формате ДД.ММ.ГГГГ и быть корректной');
       return;
     }
 
@@ -115,6 +129,7 @@ export const EmployeesScreen = ({ navigation }: Props) => {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         position: position.trim() || null,
+        hire_date: apiHireDate,
         department_ids: selectedDepartmentIds,
       });
       Alert.alert(
@@ -124,6 +139,7 @@ export const EmployeesScreen = ({ navigation }: Props) => {
       setFirstName('');
       setLastName('');
       setPosition('');
+      setHireDate('');
       setEmail('');
       setPassword('');
       setSelectedDepartmentIds([]);
@@ -189,6 +205,14 @@ export const EmployeesScreen = ({ navigation }: Props) => {
                   onChangeText={setPosition}
                   placeholderTextColor={colors.textMuted}
                 />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Дата найма (ДД.ММ.ГГГГ)"
+                  value={hireDate}
+                  onChangeText={(value) => setHireDate(formatDateInput(value))}
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="number-pad"
+                />
                 <Pressable style={styles.deptBtn} onPress={() => setDeptPickerOpen(true)}>
                   <Text style={styles.deptBtnText}>{selectedDepartmentsLabel}</Text>
                   {selectedDepartmentIds.length ? (
@@ -253,6 +277,7 @@ export const EmployeesScreen = ({ navigation }: Props) => {
               >
                 <Text style={styles.name}>{employee.first_name} {employee.last_name}</Text>
                 <Text style={styles.role}>{employee.position ?? 'Сотрудник'}</Text>
+                <Text style={styles.role}>Дата найма: {apiDateToDisplayDate(employee.hire_date)}</Text>
                 <View style={styles.tags}>
                   {(employee.departments ?? []).slice(0, 2).map((dep) => (
                     <View key={dep.id} style={styles.tag}>

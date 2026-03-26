@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from datetime import date
 from typing import Protocol
 
 
@@ -22,6 +23,7 @@ class EmployeeDTO(Protocol):
     work_email: str | None
     phone: str | None
     position: str | None
+    hire_date: date | None
     is_active: bool
     departments: Sequence[DepartmentDTO]
 
@@ -51,10 +53,13 @@ class EmployeesRepository(Protocol):
         work_email: str | None,
         phone: str | None,
         position: str | None,
+        hire_date: date | None,
         department_ids: Sequence[uuid.UUID],
     ) -> EmployeeDTO: ...
 
     async def get(self, employee_id: uuid.UUID) -> EmployeeDTO | None: ...
+
+    async def get_by_user_id(self, user_id: uuid.UUID) -> EmployeeDTO | None: ...
 
     async def list(
         self,
@@ -76,6 +81,7 @@ class EmployeesRepository(Protocol):
         work_email: str | None | object,
         phone: str | None | object,
         position: str | None | object,
+        hire_date: date | None | object,
         is_active: bool | None,
         department_ids: Sequence[uuid.UUID] | None,
     ) -> EmployeeDTO | None: ...

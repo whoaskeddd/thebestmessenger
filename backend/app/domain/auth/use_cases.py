@@ -14,6 +14,7 @@ from app.core.security import (
 from app.domain.auth.exceptions import (
     EmailAlreadyExists,
     InactiveUser,
+    InvalidCurrentPassword,
     InvalidCredentials,
     InvalidRefreshToken,
 )
@@ -119,3 +120,17 @@ class AuthService:
         if session is None:
             return
         await self._refresh_sessions.revoke(session.id, revoked_at=_utcnow())
+
+    async def change_password(
+        self, *, user_id: uuid.UUID, current_password: str, new_password: str
+    ) -> None:
+        user = await self._users.get_by_id(user_id)
+        if user is None or not user.is_active:
+            raise InvalidCredentials()
+        if not verify_password(current_password, user.password_hash):
+            raise InvalidCurrentPassword()
+
+        await self._users.update_password_hash(
+            user_id,
+            password_hash=hash_password(new_password),
+        )

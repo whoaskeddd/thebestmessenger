@@ -24,6 +24,7 @@ from app.schemas.messenger import (
     ChatReadResponse,
     ChatResponse,
     MessageCreateRequest,
+    MessagePreviewResponse,
     MessageResponse,
 )
 
@@ -49,18 +50,40 @@ async def _user_display_name(session: AsyncSession, user_id: uuid.UUID) -> str:
 
 
 async def _chat_response(session: AsyncSession, chat, *, actor_user_id: uuid.UUID) -> ChatResponse:
-    members = await SQLAlchemyChatsRepository(session).list_members(chat.id)
+    chats_repo = SQLAlchemyChatsRepository(session)
+    messages_repo = SQLAlchemyMessagesRepository(session)
+    members = await chats_repo.list_members(chat.id)
     title = chat.title or "Chat"
     if chat.chat_type == "direct":
         other_ids = [m.user_id for m in members if m.user_id != actor_user_id]
         if other_ids:
             title = await _user_display_name(session, other_ids[0])
 
+    current_member = next((m for m in members if m.user_id == actor_user_id), None)
+    unread_count = await messages_repo.count_unread_for_chat(
+        chat.id,
+        user_id=actor_user_id,
+        last_read_at=current_member.last_read_at if current_member is not None else None,
+    )
+    last_message = await messages_repo.get_last_for_chat(chat.id)
+    last_message_response = None
+    if last_message is not None:
+        last_message_response = MessagePreviewResponse(
+            id=last_message.id,
+            senderId=last_message.sender_user_id,
+            senderName=await _user_display_name(session, last_message.sender_user_id),
+            messageType=last_message.message_type,
+            body=last_message.body,
+            createdAt=last_message.created_at,
+        )
+
     return ChatResponse(
         id=chat.id,
         chatType=chat.chat_type,
         title=title,
         members=[ChatMemberResponse(userId=m.user_id) for m in members],
+        unreadCount=unread_count,
+        lastMessage=last_message_response,
         createdAt=chat.created_at,
     )
 

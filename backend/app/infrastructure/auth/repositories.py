@@ -36,6 +36,14 @@ class SQLAlchemyUserRepository(UserRepository):
         await self._session.flush()
         return user
 
+    async def update_password_hash(self, user_id: uuid.UUID, *, password_hash: str) -> bool:
+        result = await self._session.execute(
+            update(User)
+            .where(User.id == user_id)
+            .values(password_hash=password_hash, token_version=User.token_version + 1)
+        )
+        return bool(result.rowcount)
+
 
 class SQLAlchemyRefreshSessionRepository(RefreshSessionRepository):
     def __init__(self, session: AsyncSession) -> None:
@@ -65,4 +73,3 @@ class SQLAlchemyRefreshSessionRepository(RefreshSessionRepository):
             .where(RefreshSession.id == session_id)
             .values(revoked_at=revoked_at)
         )
-

@@ -11,6 +11,7 @@ from app.api.auth.security import get_current_user
 from app.domain.auth.exceptions import (
     EmailAlreadyExists,
     InactiveUser,
+    InvalidCurrentPassword,
     InvalidCredentials,
     InvalidRefreshToken,
 )
@@ -20,6 +21,7 @@ from app.infrastructure.auth.repositories import (
     SQLAlchemyUserRepository,
 )
 from app.schemas.auth import (
+    ChangePasswordRequest,
     LoginRequest,
     MeResponse,
     RefreshRequest,
@@ -88,3 +90,22 @@ async def logout(payload: RefreshRequest, session: DbSessionDep) -> None:
 @router.get("/me", response_model=MeResponse)
 async def me(user=Depends(get_current_user)) -> MeResponse:
     return MeResponse(id=str(user.id), email=user.email, role=user.role)
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(
+    payload: ChangePasswordRequest,
+    session: DbSessionDep,
+    user=Depends(get_current_user),
+) -> None:
+    service = _service(session)
+    try:
+        await service.change_password(
+            user_id=user.id,
+            current_password=payload.current_password,
+            new_password=payload.new_password,
+        )
+        await session.commit()
+    except InvalidCurrentPassword as exc:
+        await session.rollback()
+        raise HTTPException(status_code=401, detail="invalid current password") from exc

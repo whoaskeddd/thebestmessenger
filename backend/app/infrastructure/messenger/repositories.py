@@ -140,3 +140,30 @@ class SQLAlchemyMessagesRepository(MessagesRepository):
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_last_for_chat(self, chat_id: uuid.UUID) -> Message | None:
+        stmt = (
+            select(Message)
+            .where(Message.chat_id == chat_id)
+            .order_by(Message.created_at.desc())
+            .limit(1)
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def count_unread_for_chat(
+        self,
+        chat_id: uuid.UUID,
+        *,
+        user_id: uuid.UUID,
+        last_read_at: datetime | None,
+    ) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(Message)
+            .where(Message.chat_id == chat_id)
+            .where(Message.sender_user_id != user_id)
+        )
+        if last_read_at is not None:
+            stmt = stmt.where(Message.created_at > last_read_at)
+        result = await self._session.execute(stmt)
+        return int(result.scalar() or 0)

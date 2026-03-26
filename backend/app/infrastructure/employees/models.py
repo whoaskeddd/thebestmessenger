@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 import sqlalchemy as sa
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Table, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Table, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -77,6 +77,7 @@ class Employee(Base):
     work_email: Mapped[str | None] = mapped_column(String(320), nullable=True, index=True)
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     position: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    hire_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
 
     is_active: Mapped[bool] = mapped_column(Boolean(), default=True, nullable=False)
 

@@ -17,7 +17,6 @@ export const NewsScreen = () => {
   const [isSubmitting, setSubmitting] = useState(false);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [filter, setFilter] = useState<'all' | 'hr' | 'events'>('all');
   const [showComposer, setShowComposer] = useState(false);
 
   const load = async (): Promise<void> => {
@@ -80,12 +79,6 @@ export const NewsScreen = () => {
             ) : null}
           </View>
 
-          <View style={styles.filters}>
-            <Chip label="All" active={filter === 'all'} onPress={() => setFilter('all')} />
-            <Chip label="HR" active={filter === 'hr'} onPress={() => setFilter('hr')} />
-            <Chip label="Events" active={filter === 'events'} onPress={() => setFilter('events')} />
-          </View>
-
           {isHr && showComposer ? (
             <View style={styles.composer}>
               <Text style={styles.composerTitle}>Публикация новости</Text>
@@ -104,9 +97,11 @@ export const NewsScreen = () => {
                 placeholderTextColor={colors.textMuted}
                 multiline
               />
-              <Pressable style={styles.publishBtn} onPress={() => void createAnnouncement()} disabled={isSubmitting}>
-                <Text style={styles.publishText}>{isSubmitting ? 'Публикую...' : 'Опубликовать'}</Text>
-              </Pressable>
+              <View style={styles.composerActions}>
+                <Pressable style={styles.publishBtn} onPress={() => void createAnnouncement()} disabled={isSubmitting}>
+                  <Text style={styles.publishText}>{isSubmitting ? 'Публикую...' : 'Опубликовать'}</Text>
+                </Pressable>
+              </View>
             </View>
           ) : null}
 
@@ -138,12 +133,6 @@ export const NewsScreen = () => {
   );
 };
 
-const Chip = ({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) => (
-  <Pressable style={[styles.chip, active && styles.chipActive]} onPress={onPress}>
-    <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
-  </Pressable>
-);
-
 const styles = StyleSheet.create({
   page: { flex: 1 },
   wrap: { paddingTop: 16, paddingHorizontal: 20, paddingBottom: 120, gap: 12, backgroundColor: colors.pageBg },
@@ -152,11 +141,6 @@ const styles = StyleSheet.create({
   subtitle: { ...typography.subtitle, fontFamily: fontFamilies.primary, color: colors.textSecondary, marginTop: 2 },
   plus: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.actionBlue, alignItems: 'center', justifyContent: 'center' },
   plusText: { color: colors.surface, fontSize: 20, fontWeight: '700', fontFamily: fontFamilies.primary },
-  filters: { flexDirection: 'row', gap: 8, width: '100%' },
-  chip: { height: 34, borderRadius: 999, backgroundColor: colors.cardSoft, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
-  chipActive: { backgroundColor: colors.primary },
-  chipText: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textSecondary, fontWeight: '700' },
-  chipTextActive: { color: colors.surface },
   composer: { borderRadius: 16, backgroundColor: colors.cardStrong, padding: 14, gap: 8 },
   composerTitle: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '700' },
   input: {
@@ -167,7 +151,8 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontFamily: fontFamilies.primary,
   },
-  multiline: { minHeight: 84, textAlignVertical: 'top', paddingTop: 10 },
+  multiline: { minHeight: 120, textAlignVertical: 'top', paddingTop: 10, paddingBottom: 12 },
+  composerActions: { marginTop: 4 },
   publishBtn: { height: 44, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   publishText: { ...typography.button, fontFamily: fontFamilies.primary, color: colors.surface },
   emptyCard: { borderRadius: 16, backgroundColor: colors.cardSoft, padding: 14 },

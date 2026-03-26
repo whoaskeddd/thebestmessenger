@@ -37,6 +37,8 @@ class UserRepository(Protocol):
         is_active: bool,
     ) -> UserDTO: ...
 
+    async def update_password_hash(self, user_id: uuid.UUID, *, password_hash: str) -> bool: ...
+
 
 class RefreshSessionRepository(Protocol):
     async def create(
@@ -50,4 +52,3 @@ class RefreshSessionRepository(Protocol):
     async def get_by_token_hash(self, token_hash: str) -> RefreshSessionDTO | None: ...
 
     async def revoke(self, session_id: uuid.UUID, *, revoked_at: datetime) -> None: ...
-

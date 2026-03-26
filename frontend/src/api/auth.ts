@@ -27,6 +27,17 @@ const parseJson = async <T>(response: Response): Promise<T> => {
   return (text ? JSON.parse(text) : {}) as T;
 };
 
+function parseErrorMessage(body: unknown): string | null {
+  if (!body || typeof body !== 'object') return null;
+  const detail = (body as { detail?: unknown }).detail;
+  if (typeof detail === 'string' && detail.trim()) return detail;
+  if (Array.isArray(detail) && detail.length > 0) {
+    const first = detail[0] as { msg?: unknown } | undefined;
+    if (first && typeof first.msg === 'string' && first.msg.trim()) return first.msg;
+  }
+  return null;
+}
+
 const request = async <T>(path: string, init: RequestInitEx = {}): Promise<T> => {
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -47,8 +58,8 @@ const request = async <T>(path: string, init: RequestInitEx = {}): Promise<T> =>
   }
 
   if (!response.ok) {
-    const body = await parseJson<{ detail?: string }>(response).catch(() => null);
-    throw new Error(body?.detail ?? `Request failed: ${response.status}`);
+    const body = await parseJson<unknown>(response).catch(() => null);
+    throw new Error(parseErrorMessage(body) ?? `Request failed: ${response.status}`);
   }
 
   if (response.status === 204) {

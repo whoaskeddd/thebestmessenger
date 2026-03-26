@@ -20,3 +20,6 @@ class InactiveUser(AuthError):
 class InvalidRefreshToken(AuthError):
     pass
 
+
+class InvalidCurrentPassword(AuthError):
+    pass

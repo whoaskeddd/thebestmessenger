@@ -74,11 +74,16 @@ export const DashboardScreen = ({ navigation }: Props) => {
               <Text style={styles.profileName}>{displayName}</Text>
               <Text style={styles.profileRole}>{roleLabel}</Text>
             </View>
-            {isHr ? (
-              <Pressable style={styles.hrChip} onPress={() => navigation.navigate('Employees')}>
-                <Text style={styles.hrChipText}>HR</Text>
+            <View style={styles.profileActions}>
+              <Pressable style={styles.profileBtn} onPress={() => navigation.navigate('EmployeeCard')}>
+                <Text style={styles.profileBtnText}>Профиль</Text>
               </Pressable>
-            ) : null}
+              {isHr ? (
+                <Pressable style={styles.hrChip} onPress={() => navigation.navigate('Employees')}>
+                  <Text style={styles.hrChipText}>HR</Text>
+                </Pressable>
+              ) : null}
+            </View>
           </View>
 
           <View style={styles.statsRow}>
@@ -200,6 +205,27 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontFamily: fontFamilies.primary,
     color: colors.textSecondary,
+  },
+  profileActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  profileBtn: {
+    height: 28,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileBtnText: {
+    ...typography.caption,
+    fontFamily: fontFamilies.primary,
+    color: colors.textPrimary,
+    fontWeight: '700',
   },
   hrChip: {
     height: 28,

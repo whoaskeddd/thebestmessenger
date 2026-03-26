@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from datetime import date
 
 from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,6 +62,7 @@ class SQLAlchemyEmployeesRepository(EmployeesRepository):
         work_email: str | None,
         phone: str | None,
         position: str | None,
+        hire_date: date | None,
         department_ids: Sequence[uuid.UUID],
     ) -> Employee:
         departments: list[Department] = []
@@ -76,6 +78,7 @@ class SQLAlchemyEmployeesRepository(EmployeesRepository):
             work_email=work_email,
             phone=phone,
             position=position,
+            hire_date=hire_date,
             departments=departments,
         )
         self._session.add(emp)
@@ -86,6 +89,15 @@ class SQLAlchemyEmployeesRepository(EmployeesRepository):
         stmt = (
             select(Employee)
             .where(Employee.id == employee_id)
+            .options(selectinload(Employee.departments))
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_by_user_id(self, user_id: uuid.UUID) -> Employee | None:
+        stmt = (
+            select(Employee)
+            .where(Employee.user_id == user_id)
             .options(selectinload(Employee.departments))
         )
         result = await self._session.execute(stmt)
@@ -132,6 +144,7 @@ class SQLAlchemyEmployeesRepository(EmployeesRepository):
         work_email: str | None | object,
         phone: str | None | object,
         position: str | None | object,
+        hire_date: date | None | object,
         is_active: bool | None,
         department_ids: Sequence[uuid.UUID] | None,
     ) -> Employee | None:
@@ -153,6 +166,8 @@ class SQLAlchemyEmployeesRepository(EmployeesRepository):
             emp.phone = phone  # type: ignore[assignment]
         if position is not UNSET:
             emp.position = position  # type: ignore[assignment]
+        if hire_date is not UNSET:
+            emp.hire_date = hire_date  # type: ignore[assignment]
         if is_active is not None:
             emp.is_active = is_active
 
@@ -169,4 +184,3 @@ class SQLAlchemyEmployeesRepository(EmployeesRepository):
     async def delete(self, employee_id: uuid.UUID) -> bool:
         result = await self._session.execute(delete(Employee).where(Employee.id == employee_id))
         return result.rowcount > 0
-

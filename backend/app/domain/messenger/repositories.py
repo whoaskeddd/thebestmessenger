@@ -93,3 +93,12 @@ class MessagesRepository(Protocol):
         before: datetime | None,
     ) -> Sequence[MessageDTO]: ...
 
+    async def get_last_for_chat(self, chat_id: uuid.UUID) -> MessageDTO | None: ...
+
+    async def count_unread_for_chat(
+        self,
+        chat_id: uuid.UUID,
+        *,
+        user_id: uuid.UUID,
+        last_read_at: datetime | None,
+    ) -> int: ...

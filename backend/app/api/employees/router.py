@@ -20,6 +20,7 @@ from app.schemas.employees import (
     DepartmentUpdate,
     EmployeeCreate,
     EmployeeResponse,
+    EmployeeSelfUpdate,
     EmployeeUpdate,
 )
 
@@ -48,6 +49,7 @@ def _employee_response(emp) -> EmployeeResponse:
         work_email=emp.work_email,
         phone=emp.phone,
         position=emp.position,
+        hire_date=emp.hire_date,
         is_active=emp.is_active,
         departments=[_department_response(d) for d in emp.departments],
     )
@@ -159,10 +161,54 @@ async def create_employee(payload: EmployeeCreate, session: DbSessionDep) -> Emp
             work_email=str(payload.work_email) if payload.work_email is not None else None,
             phone=payload.phone,
             position=payload.position,
+            hire_date=payload.hire_date,
             department_ids=payload.department_ids,
         )
         await session.commit()
         return _employee_response(emp)
+    except IntegrityError as exc:
+        await session.rollback()
+        raise HTTPException(status_code=409, detail="employee conflict") from exc
+
+
+@router.get("/employees/me", response_model=EmployeeResponse)
+async def get_my_employee(session: DbSessionDep, current_user=Depends(get_current_user)) -> EmployeeResponse:
+    try:
+        emp = await _service(session).get_my_employee(current_user.id)
+        return _employee_response(emp)
+    except NotFound as exc:
+        raise HTTPException(status_code=404, detail="employee profile not found") from exc
+
+
+@router.patch("/employees/me", response_model=EmployeeResponse)
+async def update_my_employee(
+    payload: EmployeeSelfUpdate, session: DbSessionDep, current_user=Depends(get_current_user)
+) -> EmployeeResponse:
+    fields = payload.model_fields_set
+
+    def _maybe(field: str, value):
+        return value if field in fields else UNSET
+
+    try:
+        profile = await _service(session).get_my_employee(current_user.id)
+        emp = await _service(session).update_employee(
+            profile.id,
+            user_id=UNSET,
+            first_name=payload.first_name if "first_name" in fields else None,
+            last_name=payload.last_name if "last_name" in fields else None,
+            middle_name=_maybe("middle_name", payload.middle_name),
+            work_email=UNSET,
+            phone=_maybe("phone", payload.phone),
+            position=_maybe("position", payload.position),
+            hire_date=UNSET,
+            is_active=None,
+            department_ids=None,
+        )
+        await session.commit()
+        return _employee_response(emp)
+    except NotFound as exc:
+        await session.rollback()
+        raise HTTPException(status_code=404, detail="employee profile not found") from exc
     except IntegrityError as exc:
         await session.rollback()
         raise HTTPException(status_code=409, detail="employee conflict") from exc
@@ -198,6 +244,7 @@ async def update_employee(employee_id: uuid.UUID, payload: EmployeeUpdate, sessi
             work_email=_maybe("work_email", str(payload.work_email) if payload.work_email is not None else None),
             phone=_maybe("phone", payload.phone),
             position=_maybe("position", payload.position),
+            hire_date=_maybe("hire_date", payload.hire_date),
             is_active=payload.is_active if "is_active" in fields else None,
             department_ids=payload.department_ids if "department_ids" in fields else None,
         )
@@ -223,4 +270,3 @@ async def delete_employee(employee_id: uuid.UUID, session: DbSessionDep) -> None
     except NotFound as exc:
         await session.rollback()
         raise HTTPException(status_code=404, detail="employee not found") from exc
-

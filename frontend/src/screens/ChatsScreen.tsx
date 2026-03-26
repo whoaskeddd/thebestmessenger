@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { modulesApi } from '../api/modules';
@@ -9,63 +9,58 @@ import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
 import { fontFamilies, typography } from '../theme/typography';
-import type { Employee } from '../types/api';
+import type { Chat, Employee } from '../types/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chats'>;
 
-type ChatPreview = {
-  id: string;
-  name: string;
-  message: string;
-  trailing: string;
-  unread?: number;
-};
-
-const initialChats: ChatPreview[] = [
-  {
-    id: 'anna-petrova',
-    name: 'Анна Петрова',
-    message: 'Отправила обновленный оффер для кандидата',
-    trailing: '09:42',
-  },
-  {
-    id: 'igor-smirnov',
-    name: 'Игорь Смирнов',
-    message: 'Нужно согласовать дату интервью на завтра',
-    trailing: 'Вчера',
-  },
-  {
-    id: 'elena-hrbp',
-    name: 'Елена HRBP',
-    message: 'Финальный фидбек загружен в карточку сотрудника',
-    trailing: '09:01',
-    unread: 2,
-  },
-];
-
 export const ChatsScreen = ({ navigation }: Props) => {
   const { user } = useAuth();
-  const isHr = user?.role === 'hr' || user?.role === 'admin';
   const [search, setSearch] = useState('');
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [isLoadingChats, setLoadingChats] = useState(true);
+
   const [showEmployeePicker, setShowEmployeePicker] = useState(false);
   const [isLoadingEmployees, setLoadingEmployees] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
 
-  const chats = useMemo(() => {
+  const loadChats = async (): Promise<void> => {
+    try {
+      setLoadingChats(true);
+      const data = await modulesApi.getChats();
+      setChats(data);
+    } catch (error) {
+      Alert.alert('Ошибка', error instanceof Error ? error.message : 'Не удалось загрузить чаты');
+    } finally {
+      setLoadingChats(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadChats();
+  }, []);
+
+  const filteredChats = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return initialChats;
-    return initialChats.filter((chat) => {
-      const haystack = `${chat.name} ${chat.message}`.toLowerCase();
+    const sorted = [...chats].sort((a, b) => {
+      const aDate = a.lastMessage?.createdAt ?? a.createdAt;
+      const bDate = b.lastMessage?.createdAt ?? b.createdAt;
+      return bDate.localeCompare(aDate);
+    });
+
+    if (!q) return sorted;
+    return sorted.filter((chat) => {
+      const lastText = chat.lastMessage?.body ?? '';
+      const haystack = `${chat.title} ${lastText}`.toLowerCase();
       return haystack.includes(q);
     });
-  }, [search]);
+  }, [chats, search]);
 
   const loadEmployees = async (): Promise<void> => {
-    if (!isHr) return;
     try {
       setLoadingEmployees(true);
       const data = await modulesApi.getEmployees();
-      setEmployees(data);
+      const available = data.filter((employee) => employee.user_id && employee.user_id !== user?.id);
+      setEmployees(available);
     } catch (error) {
       Alert.alert('Ошибка', error instanceof Error ? error.message : 'Не удалось загрузить сотрудников');
     } finally {
@@ -81,11 +76,24 @@ export const ChatsScreen = ({ navigation }: Props) => {
     }
   };
 
-  const openEmployeeRoom = (employee: Employee): void => {
-    const name = `${employee.first_name} ${employee.last_name}`;
-    const chatId = employee.user_id ?? employee.id;
-    navigation.navigate('ChatRoom', { chatId, chatName: name });
-    setShowEmployeePicker(false);
+  const openEmployeeRoom = async (employee: Employee): Promise<void> => {
+    if (!employee.user_id) {
+      Alert.alert('Невозможно создать чат', 'У сотрудника нет пользовательского аккаунта');
+      return;
+    }
+
+    try {
+      const chat = await modulesApi.createDirectChat(employee.user_id);
+      setShowEmployeePicker(false);
+      await loadChats();
+      navigation.navigate('ChatRoom', { chatId: chat.id, chatName: chat.title });
+    } catch (error) {
+      Alert.alert('Ошибка', error instanceof Error ? error.message : 'Не удалось открыть чат');
+    }
+  };
+
+  const openChat = (chat: Chat): void => {
+    navigation.navigate('ChatRoom', { chatId: chat.id, chatName: chat.title });
   };
 
   return (
@@ -94,17 +102,8 @@ export const ChatsScreen = ({ navigation }: Props) => {
         <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <Text style={styles.title}>Чаты</Text>
-            <Pressable
-              style={styles.plus}
-              onPress={() => {
-                if (isHr) {
-                  void togglePicker();
-                  return;
-                }
-                navigation.navigate('ChatRoom', { chatId: 'new-chat', chatName: 'Новый чат' });
-              }}
-            >
-              <Text style={styles.plusText}>+</Text>
+            <Pressable style={styles.plus} onPress={() => void togglePicker()}>
+              <Text style={styles.plusText}>{showEmployeePicker ? '×' : '+'}</Text>
             </Pressable>
           </View>
 
@@ -119,15 +118,15 @@ export const ChatsScreen = ({ navigation }: Props) => {
             />
           </View>
 
-          {isHr && showEmployeePicker ? (
+          {showEmployeePicker ? (
             <View style={styles.pickerCard}>
-              <Text style={styles.pickerTitle}>Выберите сотрудника</Text>
+              <Text style={styles.pickerTitle}>Новый чат</Text>
               {isLoadingEmployees ? <ActivityIndicator color={colors.primary} /> : null}
               {!isLoadingEmployees && employees.length === 0 ? (
-                <Text style={styles.pickerEmpty}>Сотрудники не найдены</Text>
+                <Text style={styles.pickerEmpty}>Нет сотрудников для создания чата</Text>
               ) : null}
               {employees.map((employee) => (
-                <Pressable key={employee.id} style={styles.pickerRow} onPress={() => openEmployeeRoom(employee)}>
+                <Pressable key={employee.id} style={styles.pickerRow} onPress={() => void openEmployeeRoom(employee)}>
                   <Text style={styles.pickerName}>{employee.first_name} {employee.last_name}</Text>
                   <Text style={styles.pickerMeta}>{employee.position ?? 'Сотрудник'}</Text>
                 </Pressable>
@@ -137,9 +136,22 @@ export const ChatsScreen = ({ navigation }: Props) => {
 
           <Text style={styles.label}>Последние</Text>
 
-          {chats.map((chat) => (
-            <Pressable key={chat.id} onPress={() => navigation.navigate('ChatRoom', { chatId: chat.id, chatName: chat.name })}>
-              <Row name={chat.name} message={chat.message} trailing={chat.trailing} unread={chat.unread} />
+          {isLoadingChats ? <ActivityIndicator color={colors.primary} /> : null}
+
+          {!isLoadingChats && filteredChats.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>Чатов пока нет</Text>
+            </View>
+          ) : null}
+
+          {filteredChats.map((chat) => (
+            <Pressable key={chat.id} onPress={() => openChat(chat)}>
+              <Row
+                name={chat.title}
+                message={chat.lastMessage?.body ?? 'Нет сообщений'}
+                trailing={formatTimeLabel(chat.lastMessage?.createdAt ?? chat.createdAt)}
+                unread={chat.unreadCount}
+              />
             </Pressable>
           ))}
         </ScrollView>
@@ -159,21 +171,27 @@ const Row = ({
   name: string;
   message: string;
   trailing: string;
-  unread?: number;
+  unread: number;
 }) => (
   <View style={styles.row}>
     <View style={styles.avatar} />
     <View style={{ flex: 1 }}>
       <Text style={styles.rowName}>{name}</Text>
-      <Text style={styles.rowMessage}>{message}</Text>
+      <Text style={styles.rowMessage} numberOfLines={1}>{message}</Text>
     </View>
-    {unread ? (
-      <View style={styles.badge}><Text style={styles.badgeText}>{unread}</Text></View>
+    {unread > 0 ? (
+      <View style={styles.badge}><Text style={styles.badgeText}>{unread > 99 ? '99+' : unread}</Text></View>
     ) : (
       <Text style={styles.trailing}>{trailing}</Text>
     )}
   </View>
 );
+
+function formatTimeLabel(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
 
 const styles = StyleSheet.create({
   page: { flex: 1 },
@@ -224,6 +242,16 @@ const styles = StyleSheet.create({
   rowName: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '700' },
   rowMessage: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textSecondary },
   trailing: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textMuted, fontWeight: '700' },
-  badge: { minWidth: 22, height: 22, borderRadius: 11, backgroundColor: colors.actionBlue, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  badgeText: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.surface, fontWeight: '700' },
+  badge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+  },
+  badgeText: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.surface, fontWeight: '700', fontSize: 11 },
+  emptyCard: { borderRadius: 16, backgroundColor: colors.primarySoft, padding: 14 },
+  emptyText: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textSecondary },
 });
