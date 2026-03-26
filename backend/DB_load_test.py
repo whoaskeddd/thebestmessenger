@@ -10,12 +10,14 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import create_engine, create_sessionmaker, dispose_engine
+from app.core.security import hash_password
 from app.infrastructure.db import models as _db_models  # noqa: F401
 from app.infrastructure.employees.models import Department, Employee
 from app.infrastructure.employees.repositories import (
     SQLAlchemyDepartmentsRepository,
     SQLAlchemyEmployeesRepository,
 )
+from app.infrastructure.auth.repositories import SQLAlchemyUserRepository
 
 FIRST_NAMES = (
     "Ivan",
@@ -90,6 +92,11 @@ DEPARTMENT_NAMES = (
     "Legal",
 )
 
+DEFAULT_USERS: tuple[tuple[str, str, str], ...] = (
+    ("hr@example.com", "hrpassword123", "hr"),
+    ("admin@example.com", "adminpassword123", "admin"),
+)
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -141,12 +148,23 @@ async def populate_employees(count: int) -> None:
 
     try:
         async with sessionmaker() as session:
+            users_repo = SQLAlchemyUserRepository(session)
+            for email, password, role in DEFAULT_USERS:
+                if await users_repo.get_by_email(email) is None:
+                    await users_repo.create_user(
+                        email=email,
+                        password_hash=hash_password(password),
+                        role=role,
+                        is_active=True,
+                    )
+
             existing_employees = await session.scalar(select(func.count()).select_from(Employee))
             if (existing_employees or 0) > 0:
                 print(
                     "Skipping test data load: employees table already contains "
                     f"{existing_employees} records.",
                 )
+                await session.commit()
                 return
 
             departments_repo = SQLAlchemyDepartmentsRepository(session)
