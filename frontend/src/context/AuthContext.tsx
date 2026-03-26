@@ -99,7 +99,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [setTokens]);
 
   const register = useCallback(async (email: string, password: string, role: UserRole): Promise<void> => {
-    const pair = await authApi.register(email, password, role);
+    const pair = await authApi.register(email, password);
     await setTokens(pair);
     const me = await authApi.me();
     setUser(me);

@@ -1,8 +1,11 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { modulesApi } from '../api/modules';
+import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
+import type { Employee } from '../types/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chats'>;
 
@@ -37,7 +40,12 @@ const initialChats: ChatPreview[] = [
 ];
 
 export const ChatsScreen = ({ navigation }: Props) => {
+  const { user } = useAuth();
+  const isHr = user?.role === 'hr' || user?.role === 'admin';
   const [search, setSearch] = useState('');
+  const [showEmployeePicker, setShowEmployeePicker] = useState(false);
+  const [isLoadingEmployees, setLoadingEmployees] = useState(false);
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
   const chats = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -48,14 +56,67 @@ export const ChatsScreen = ({ navigation }: Props) => {
     });
   }, [search]);
 
+  const loadEmployees = async (): Promise<void> => {
+    if (!isHr) return;
+    try {
+      setLoadingEmployees(true);
+      const data = await modulesApi.getEmployees();
+      setEmployees(data);
+    } catch (error) {
+      Alert.alert('Ошибка', error instanceof Error ? error.message : 'Не удалось загрузить сотрудников');
+    } finally {
+      setLoadingEmployees(false);
+    }
+  };
+
+  const togglePicker = async (): Promise<void> => {
+    const next = !showEmployeePicker;
+    setShowEmployeePicker(next);
+    if (next && employees.length === 0) {
+      await loadEmployees();
+    }
+  };
+
+  const openEmployeeRoom = (employee: Employee): void => {
+    const name = `${employee.first_name} ${employee.last_name}`;
+    const chatId = employee.user_id ?? employee.id;
+    navigation.navigate('ChatRoom', { chatId, chatName: name });
+    setShowEmployeePicker(false);
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.wrap}>
       <View style={styles.header}>
         <Text style={styles.title}>Чаты HR</Text>
-        <Pressable style={styles.plus} onPress={() => navigation.navigate('ChatRoom', { chatId: 'new-chat', chatName: 'Новый чат' })}>
+        <Pressable
+          style={styles.plus}
+          onPress={() => {
+            if (isHr) {
+              void togglePicker();
+              return;
+            }
+            navigation.navigate('ChatRoom', { chatId: 'new-chat', chatName: 'Новый чат' });
+          }}
+        >
           <Text style={styles.plusText}>+</Text>
         </Pressable>
       </View>
+
+      {isHr && showEmployeePicker ? (
+        <View style={styles.pickerCard}>
+          <Text style={styles.pickerTitle}>Выберите сотрудника для переписки</Text>
+          {isLoadingEmployees ? <ActivityIndicator color="#FF6B6B" /> : null}
+          {!isLoadingEmployees && employees.length === 0 ? (
+            <Text style={styles.pickerEmpty}>Сотрудники не найдены</Text>
+          ) : null}
+          {employees.map((employee) => (
+            <Pressable key={employee.id} style={styles.pickerRow} onPress={() => openEmployeeRoom(employee)}>
+              <Text style={styles.pickerName}>{employee.first_name} {employee.last_name}</Text>
+              <Text style={styles.pickerMeta}>{employee.position ?? 'Сотрудник'}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
 
       <TextInput
         style={styles.search}
@@ -107,6 +168,24 @@ const styles = StyleSheet.create({
   title: { color: '#1A1A1A', fontSize: 28, fontWeight: '700' },
   plus: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FF6B6B', alignItems: 'center', justifyContent: 'center' },
   plusText: { color: '#FFFFFF', fontSize: 20, fontWeight: '700' },
+  pickerCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    padding: 10,
+    gap: 8,
+  },
+  pickerTitle: { color: '#111827', fontWeight: '700' },
+  pickerEmpty: { color: '#6B7280', fontSize: 12 },
+  pickerRow: {
+    borderRadius: 10,
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  pickerName: { color: '#111827', fontWeight: '700' },
+  pickerMeta: { color: '#6B7280', fontSize: 12 },
   search: {
     height: 52,
     borderRadius: 26,

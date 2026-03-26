@@ -61,6 +61,14 @@ export type Department = {
   name: string;
 };
 
+export type DepartmentCreatePayload = {
+  name: string;
+};
+
+export type DepartmentUpdatePayload = {
+  name?: string | null;
+};
+
 export type MyTaskResponse = {
   task: HrTask;
   completed_at?: string | null;
@@ -72,6 +80,41 @@ export type HrTaskCreatePayload = {
   due_date?: string | null;
   announcement_id?: string | null;
   assignee_user_ids: string[];
+};
+
+export type EmployeeCreatePayload = {
+  user_id?: string | null;
+  first_name: string;
+  last_name: string;
+  middle_name?: string | null;
+  work_email?: string | null;
+  phone?: string | null;
+  position?: string | null;
+  department_ids?: string[];
+};
+
+export type EmployeeUpdatePayload = {
+  user_id?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  middle_name?: string | null;
+  work_email?: string | null;
+  phone?: string | null;
+  position?: string | null;
+  is_active?: boolean | null;
+  department_ids?: string[] | null;
+};
+
+export type EmployeeProvisionPayload = {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  middle_name?: string | null;
+  work_email?: string | null;
+  phone?: string | null;
+  position?: string | null;
+  department_ids?: string[];
 };
 
 export type LeaveRequestType = 'vacation' | 'day_off' | 'sick';
@@ -86,6 +129,13 @@ export type LeaveRequest = {
   end_date: string;
   reason?: string | null;
   hr_comment?: string | null;
+};
+
+export type LeaveRequestsQuery = {
+  status?: LeaveRequestStatus;
+  type?: LeaveRequestType;
+  limit?: number;
+  offset?: number;
 };
 
 export type LeaveRequestEvent = {

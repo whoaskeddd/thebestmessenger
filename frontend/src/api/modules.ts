@@ -1,17 +1,65 @@
 import type {
   Announcement,
   AnnouncementCreatePayload,
+  Department,
+  DepartmentCreatePayload,
+  DepartmentUpdatePayload,
   Employee,
+  EmployeeCreatePayload,
+  EmployeeProvisionPayload,
+  EmployeeUpdatePayload,
   HrTask,
   HrTaskCreatePayload,
   LeaveRequest,
   LeaveRequestEvent,
+  LeaveRequestsQuery,
   LeaveRequestType,
+  MeResponse,
   MyTaskResponse,
 } from '../types/api';
 import { authApi } from './auth';
 
 export const modulesApi = {
+  async getHealth(): Promise<Record<string, string>> {
+    return authApi.request<Record<string, string>>('/health', { skipAuth: true });
+  },
+
+  async getIndex(): Promise<Record<string, string>> {
+    return authApi.request<Record<string, string>>('/', { skipAuth: true });
+  },
+
+  async getDepartments(params?: { search?: string; limit?: number; offset?: number }): Promise<Department[]> {
+    const query = new URLSearchParams({
+      limit: String(params?.limit ?? 50),
+      offset: String(params?.offset ?? 0),
+    });
+    if (params?.search?.trim()) query.set('search', params.search.trim());
+    const data = await authApi.request<Department[]>(`/departments?${query.toString()}`);
+    return Array.isArray(data) ? data : [];
+  },
+
+  async createDepartment(payload: DepartmentCreatePayload): Promise<Department> {
+    return authApi.request<Department>('/departments', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getDepartment(departmentId: string): Promise<Department> {
+    return authApi.request<Department>(`/departments/${departmentId}`);
+  },
+
+  async updateDepartment(departmentId: string, payload: DepartmentUpdatePayload): Promise<Department> {
+    return authApi.request<Department>(`/departments/${departmentId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async deleteDepartment(departmentId: string): Promise<void> {
+    await authApi.request<void>(`/departments/${departmentId}`, { method: 'DELETE' });
+  },
+
   async getEmployees(search?: string): Promise<Employee[]> {
     const query = new URLSearchParams({ limit: '50', offset: '0' });
     if (search?.trim()) query.set('search', search.trim());
@@ -19,8 +67,47 @@ export const modulesApi = {
     return Array.isArray(data) ? data : [];
   },
 
+  async createEmployee(payload: EmployeeCreatePayload): Promise<Employee> {
+    return authApi.request<Employee>('/employees', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
   async getEmployee(employeeId: string): Promise<Employee> {
     return authApi.request<Employee>(`/employees/${employeeId}`);
+  },
+
+  async updateEmployee(employeeId: string, payload: EmployeeUpdatePayload): Promise<Employee> {
+    return authApi.request<Employee>(`/employees/${employeeId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async deleteEmployee(employeeId: string): Promise<void> {
+    await authApi.request<void>(`/employees/${employeeId}`, { method: 'DELETE' });
+  },
+
+  async provisionEmployeeAccount(payload: EmployeeProvisionPayload): Promise<Employee> {
+    const tokenPair = await authApi.register(payload.email, payload.password);
+    const me = await authApi.request<MeResponse>('/auth/me', {
+      skipAuth: true,
+      headers: {
+        Authorization: `Bearer ${tokenPair.access_token}`,
+      },
+    });
+
+    return this.createEmployee({
+      user_id: me.id,
+      first_name: payload.first_name,
+      last_name: payload.last_name,
+      middle_name: payload.middle_name ?? null,
+      work_email: payload.work_email ?? payload.email,
+      phone: payload.phone ?? null,
+      position: payload.position ?? null,
+      department_ids: payload.department_ids ?? [],
+    });
   },
 
   async getAnnouncements(): Promise<Announcement[]> {
@@ -68,8 +155,14 @@ export const modulesApi = {
     await authApi.request<void>(`/hr-tasks/${taskId}/complete`, { method: 'POST' });
   },
 
-  async getLeaveRequests(): Promise<LeaveRequest[]> {
-    const data = await authApi.request<LeaveRequest[]>('/leave-requests?limit=50&offset=0');
+  async getLeaveRequests(params?: LeaveRequestsQuery): Promise<LeaveRequest[]> {
+    const query = new URLSearchParams({
+      limit: String(params?.limit ?? 50),
+      offset: String(params?.offset ?? 0),
+    });
+    if (params?.status) query.set('status', params.status);
+    if (params?.type) query.set('type', params.type);
+    const data = await authApi.request<LeaveRequest[]>(`/leave-requests?${query.toString()}`);
     return Array.isArray(data) ? data : [];
   },
 
@@ -90,6 +183,10 @@ export const modulesApi = {
     return Array.isArray(data) ? data : [];
   },
 
+  async getLeaveRequest(requestId: string): Promise<LeaveRequest> {
+    return authApi.request<LeaveRequest>(`/leave-requests/${requestId}`);
+  },
+
   async approveLeaveRequest(requestId: string, hrComment?: string | null): Promise<LeaveRequest> {
     return authApi.request<LeaveRequest>(`/leave-requests/${requestId}/approve`, {
       method: 'POST',
@@ -101,6 +198,12 @@ export const modulesApi = {
     return authApi.request<LeaveRequest>(`/leave-requests/${requestId}/reject`, {
       method: 'POST',
       body: JSON.stringify({ hr_comment: hrComment }),
+    });
+  },
+
+  async cancelLeaveRequest(requestId: string): Promise<LeaveRequest> {
+    return authApi.request<LeaveRequest>(`/leave-requests/${requestId}/cancel`, {
+      method: 'POST',
     });
   },
 };

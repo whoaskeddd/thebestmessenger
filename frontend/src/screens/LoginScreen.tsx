@@ -8,7 +8,7 @@ import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
-export const LoginScreen = ({ navigation }: Props) => {
+export const LoginScreen = (_props: Props) => {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -70,8 +70,7 @@ export const LoginScreen = ({ navigation }: Props) => {
           {isLoading ? <ActivityIndicator color="#4D6BFF" /> : null}
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Нет аккаунта?</Text>
-            <LinkText title="Зарегистрироваться" onPress={() => navigation.navigate('Register')} color="#4D6BFF" />
+            <Text style={styles.footerText}>Доступ выдаёт HR-отдел. Обратитесь к HR за логином и паролем.</Text>
           </View>
         </View>
       </KeyboardAvoidingView>

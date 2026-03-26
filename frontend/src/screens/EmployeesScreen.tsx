@@ -23,7 +23,13 @@ export const EmployeesScreen = ({ navigation }: Props) => {
   const isHr = user?.role === 'hr' || user?.role === 'admin';
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setLoading] = useState(true);
+  const [isProvisioning, setProvisioning] = useState(false);
   const [search, setSearch] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [position, setPosition] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   const load = async (query?: string): Promise<void> => {
     try {
@@ -54,6 +60,42 @@ export const EmployeesScreen = ({ navigation }: Props) => {
     });
   }, [employees, search]);
 
+  const onProvision = async (): Promise<void> => {
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password.trim()) {
+      Alert.alert('Проверьте поля', 'Заполните имя, фамилию, email и пароль');
+      return;
+    }
+    if (password.trim().length < 8) {
+      Alert.alert('Проверьте пароль', 'Минимум 8 символов');
+      return;
+    }
+
+    setProvisioning(true);
+    try {
+      await modulesApi.provisionEmployeeAccount({
+        email: email.trim().toLowerCase(),
+        password: password.trim(),
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        position: position.trim() || null,
+      });
+      Alert.alert(
+        'Сотрудник создан',
+        `Передайте сотруднику данные для входа:\nЛогин: ${email.trim().toLowerCase()}\nПароль: ${password.trim()}`,
+      );
+      setFirstName('');
+      setLastName('');
+      setPosition('');
+      setEmail('');
+      setPassword('');
+      await load();
+    } catch (error) {
+      Alert.alert('Ошибка создания', error instanceof Error ? error.message : 'Не удалось создать сотрудника');
+    } finally {
+      setProvisioning(false);
+    }
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.wrap}>
       <Text style={styles.title}>Сотрудники</Text>
@@ -66,6 +108,52 @@ export const EmployeesScreen = ({ navigation }: Props) => {
 
       {!isHr ? null : (
         <>
+          <View style={styles.createCard}>
+            <Text style={styles.createTitle}>Создать сотрудника (HR)</Text>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Имя"
+              value={firstName}
+              onChangeText={setFirstName}
+              placeholderTextColor="#9CA3AF"
+            />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Фамилия"
+              value={lastName}
+              onChangeText={setLastName}
+              placeholderTextColor="#9CA3AF"
+            />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Должность (необязательно)"
+              value={position}
+              onChangeText={setPosition}
+              placeholderTextColor="#9CA3AF"
+            />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Логин (email)"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              placeholderTextColor="#9CA3AF"
+            />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Временный пароль"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              placeholderTextColor="#9CA3AF"
+            />
+            <Pressable style={styles.createBtn} onPress={() => void onProvision()} disabled={isProvisioning}>
+              <Text style={styles.createBtnText}>{isProvisioning ? 'Создаю...' : 'Создать и выдать доступ'}</Text>
+            </Pressable>
+          </View>
+
           <View style={styles.searchWrap}>
             <TextInput
               style={styles.searchInput}
@@ -128,6 +216,23 @@ const styles = StyleSheet.create({
   refreshText: { color: '#4F46E5', fontWeight: '700' },
   emptyCard: { borderRadius: 14, backgroundColor: '#F6F7F8', padding: 14 },
   emptyText: { color: '#6B7280' },
+  createCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    gap: 8,
+  },
+  createTitle: { color: '#111827', fontWeight: '700' },
+  createBtn: {
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#FF6B6B',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  createBtnText: { color: '#FFFFFF', fontWeight: '700' },
   card: { borderRadius: 14, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: '#FFFFFF', padding: 12, gap: 4 },
   name: { color: '#1A1A1A', fontSize: 15, fontWeight: '700' },
   role: { color: '#6B7280', fontSize: 13 },

@@ -10,7 +10,6 @@ import { EmployeesScreen } from '../screens/EmployeesScreen';
 import { LeavesScreen } from '../screens/LeavesScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { NewsScreen } from '../screens/NewsScreen';
-import { RegisterScreen } from '../screens/RegisterScreen';
 import { TasksScreen } from '../screens/TasksScreen';
 import type { RootStackParamList } from './types';
 
@@ -43,7 +42,6 @@ export const AppNavigator = () => {
       ) : (
         <>
           <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Register" component={RegisterScreen} />
         </>
       )}
     </Stack.Navigator>
