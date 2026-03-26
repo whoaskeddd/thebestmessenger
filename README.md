@@ -24,6 +24,11 @@
 - Ручной запуск: `docker compose run --rm db-load-test`
 - При автоматическом или ручном запуске скрипт не добавляет дубликаты поверх существующих сотрудников: если таблица `employees` уже заполнена, новые записи не создаются.
 
+### Тестовые логины (dev)
+Скрипт `backend/DB_load_test.py` также создаёт пользователей для входа (если их ещё нет):
+- HR: `hr@example.com` / `hrpassword123`
+- Admin: `admin@example.com` / `adminpassword123`
+
 ### Важные параметры `.env`
 - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` — учётка Postgres (контейнер `db`).
 - `DATABASE_URL` — строка подключения для API (host должен быть `db`).

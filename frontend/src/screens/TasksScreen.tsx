@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -26,7 +28,9 @@ export const TasksScreen = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [assigneeUserIds, setAssigneeUserIds] = useState('');
+  const [isPickerOpen, setPickerOpen] = useState(false);
+  const [assigneeQuery, setAssigneeQuery] = useState('');
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
 
   const load = async (): Promise<void> => {
     try {
@@ -61,13 +65,8 @@ export const TasksScreen = () => {
       return;
     }
 
-    const ids = assigneeUserIds
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean);
-
-    if (ids.length === 0) {
-      Alert.alert('Проверьте поля', 'Укажите как минимум один user_id исполнителя');
+    if (selectedAssigneeIds.length === 0) {
+      Alert.alert('Проверьте поля', 'Выберите как минимум одного исполнителя');
       return;
     }
 
@@ -78,12 +77,12 @@ export const TasksScreen = () => {
         description: description.trim() || null,
         due_date: dueDate.trim() || null,
         announcement_id: null,
-        assignee_user_ids: ids,
+        assignee_user_ids: selectedAssigneeIds,
       });
       setTitle('');
       setDescription('');
       setDueDate('');
-      setAssigneeUserIds('');
+      setSelectedAssigneeIds([]);
       await load();
     } catch (error) {
       Alert.alert('Ошибка', error instanceof Error ? error.message : 'Не удалось создать задачу');
@@ -101,13 +100,36 @@ export const TasksScreen = () => {
     }
   };
 
-  const employeesHint = useMemo(() => {
-    if (!employees.length) return '';
-    return employees
-      .slice(0, 5)
-      .map((item) => `${item.first_name} ${item.last_name}: ${item.user_id ?? 'no-user-id'}`)
-      .join('\n');
-  }, [employees]);
+  const selectedAssigneesLabel = useMemo(() => {
+    if (!selectedAssigneeIds.length) return 'Выбрать исполнителей';
+    const picked = employees.filter((e) => e.user_id && selectedAssigneeIds.includes(e.user_id));
+    if (picked.length === 0) return `Выбрано: ${selectedAssigneeIds.length}`;
+    const names = picked.map((e) => `${e.first_name} ${e.last_name}`.trim()).filter(Boolean);
+    return names.length <= 2 ? names.join(', ') : `${names.slice(0, 2).join(', ')} +${names.length - 2}`;
+  }, [employees, selectedAssigneeIds]);
+
+  const filteredEmployees = useMemo(() => {
+    const q = assigneeQuery.trim().toLowerCase();
+    const withUsers = employees.filter((e) => Boolean(e.user_id));
+    if (!q) return withUsers;
+    return withUsers.filter((e) => {
+      const full = `${e.first_name ?? ''} ${e.last_name ?? ''} ${e.middle_name ?? ''}`.toLowerCase();
+      const email = `${e.work_email ?? ''}`.toLowerCase();
+      const dept = (e.departments ?? []).map((d) => d.name).join(' ').toLowerCase();
+      return full.includes(q) || email.includes(q) || dept.includes(q);
+    });
+  }, [assigneeQuery, employees]);
+
+  const toggleAssignee = (userId: string): void => {
+    setSelectedAssigneeIds((prev) => (
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    ));
+  };
+
+  const closePicker = (): void => {
+    setPickerOpen(false);
+    setAssigneeQuery('');
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.wrap}>
@@ -119,15 +141,10 @@ export const TasksScreen = () => {
           <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Заголовок" placeholderTextColor="#9CA3AF" />
           <TextInput style={styles.input} value={description} onChangeText={setDescription} placeholder="Описание (необязательно)" placeholderTextColor="#9CA3AF" />
           <TextInput style={styles.input} value={dueDate} onChangeText={setDueDate} placeholder="Срок (YYYY-MM-DD)" placeholderTextColor="#9CA3AF" />
-          <TextInput
-            style={styles.input}
-            value={assigneeUserIds}
-            onChangeText={setAssigneeUserIds}
-            placeholder="user_id исполнителей через запятую"
-            placeholderTextColor="#9CA3AF"
-            autoCapitalize="none"
-          />
-          {employeesHint ? <Text style={styles.hint}>{employeesHint}</Text> : null}
+          <Pressable style={styles.pickerBtn} onPress={() => setPickerOpen(true)}>
+            <Text style={styles.pickerText}>{selectedAssigneesLabel}</Text>
+            {selectedAssigneeIds.length ? <Text style={styles.pickerMeta}>Выбрано: {selectedAssigneeIds.length}</Text> : null}
+          </Pressable>
           <Pressable style={styles.primaryBtn} onPress={() => void onCreate()} disabled={isSubmitting}>
             <Text style={styles.primaryText}>{isSubmitting ? 'Создаю...' : 'Создать задачу'}</Text>
           </Pressable>
@@ -154,6 +171,56 @@ export const TasksScreen = () => {
           </View>
         ))}
       </View>
+
+      <Modal visible={isPickerOpen} transparent animationType="fade" onRequestClose={closePicker}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Исполнители</Text>
+              <Pressable onPress={closePicker} style={styles.modalClose}>
+                <Text style={styles.modalCloseText}>Закрыть</Text>
+              </Pressable>
+            </View>
+
+            <TextInput
+              style={styles.search}
+              value={assigneeQuery}
+              onChangeText={setAssigneeQuery}
+              placeholder="Поиск: имя, отдел, email"
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="none"
+            />
+
+            <FlatList
+              data={filteredEmployees}
+              keyExtractor={(item) => item.id}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => {
+                const userId = item.user_id;
+                if (!userId) return null;
+                const checked = selectedAssigneeIds.includes(userId);
+                const dept = (item.departments ?? []).map((d) => d.name).filter(Boolean).join(', ');
+                return (
+                  <Pressable style={[styles.empRow, checked && styles.empRowChecked]} onPress={() => toggleAssignee(userId)}>
+                    <View style={styles.empLeft}>
+                      <Text style={styles.empName}>{item.first_name} {item.last_name}</Text>
+                      <Text style={styles.empMeta}>{dept || '—'}</Text>
+                    </View>
+                    <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+                      <Text style={styles.checkboxText}>{checked ? '✓' : ''}</Text>
+                    </View>
+                  </Pressable>
+                );
+              }}
+              ListEmptyComponent={<Text style={styles.empty}>Никого не нашли</Text>}
+            />
+
+            <Pressable style={styles.modalDone} onPress={closePicker}>
+              <Text style={styles.modalDoneText}>Готово</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -172,7 +239,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     color: '#111827',
   },
-  hint: { color: '#6B7280', fontSize: 12, lineHeight: 18 },
+  pickerBtn: {
+    minHeight: 44,
+    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    justifyContent: 'center',
+    gap: 2,
+  },
+  pickerText: { color: '#111827', fontWeight: '700' },
+  pickerMeta: { color: '#6B7280', fontSize: 12 },
   empty: { color: '#6B7280' },
   primaryBtn: { height: 44, borderRadius: 12, backgroundColor: '#FF6B6B', alignItems: 'center', justifyContent: 'center' },
   primaryText: { color: '#FFFFFF', fontWeight: '700' },
@@ -188,4 +267,59 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   secondaryText: { color: '#4338CA', fontWeight: '700', fontSize: 12 },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    padding: 20,
+    justifyContent: 'center',
+  },
+  modalCard: {
+    maxHeight: '80%',
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    padding: 14,
+    gap: 10,
+  },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  modalTitle: { color: '#111827', fontWeight: '800', fontSize: 16 },
+  modalClose: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, backgroundColor: '#F3F4F6' },
+  modalCloseText: { color: '#111827', fontWeight: '700', fontSize: 12 },
+  search: {
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 12,
+    color: '#111827',
+  },
+  empRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
+    marginBottom: 8,
+  },
+  empRowChecked: { backgroundColor: '#EEF2FF' },
+  empLeft: { flex: 1, paddingRight: 10 },
+  empName: { color: '#111827', fontWeight: '800', fontSize: 13 },
+  empMeta: { color: '#6B7280', fontSize: 12, marginTop: 2 },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#CBD5E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  checkboxChecked: { borderColor: '#4F46E5', backgroundColor: '#4F46E5' },
+  checkboxText: { color: '#FFFFFF', fontWeight: '900', fontSize: 14, marginTop: -2 },
+  modalDone: { height: 44, borderRadius: 12, backgroundColor: '#4F46E5', alignItems: 'center', justifyContent: 'center' },
+  modalDoneText: { color: '#FFFFFF', fontWeight: '800' },
 });
