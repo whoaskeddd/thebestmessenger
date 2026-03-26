@@ -8,6 +8,10 @@ We are building an integrated HR system with an internal messenger (see `plan.md
 - HR announcements + HR tasks (read/completed)
 - Chats + messages (REST + WebSocket)
 
+Planning docs:
+- `plan.md` (repo root) — product-level scope and modules
+- `backend/plan.md` — backend execution plan and milestone status (source of truth for backend work)
+
 ## Backend stack
 - FastAPI
 - SQL database via SQLAlchemy + Alembic (target: PostgreSQL)
@@ -79,4 +83,3 @@ Prefer “use-case first” naming and structure:
 `backend/uv.lock` suggests we use `uv` for dependency management.
 - Add dependencies in `backend/pyproject.toml`, then run `uv sync`.
 - Use `uv run ...` for running commands in the managed environment.
-

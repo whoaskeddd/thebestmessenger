@@ -33,4 +33,4 @@
 
 ### Порты (dev)
 - API: `localhost:8000`
-- Postgres: `localhost:5432`
+- Postgres: `localhost:${POSTGRES_PORT:-5433}` (внутри docker-сети всё равно `db:5432`)
