@@ -110,14 +110,13 @@ export const TasksScreen = () => {
 
   const filteredEmployees = useMemo(() => {
     const q = assigneeQuery.trim().toLowerCase();
-    const withUsers = employees.filter((e) => Boolean(e.user_id));
-    if (!q) return withUsers;
-    return withUsers.filter((e) => {
+    const base = !q ? employees : employees.filter((e) => {
       const full = `${e.first_name ?? ''} ${e.last_name ?? ''} ${e.middle_name ?? ''}`.toLowerCase();
       const email = `${e.work_email ?? ''}`.toLowerCase();
       const dept = (e.departments ?? []).map((d) => d.name).join(' ').toLowerCase();
       return full.includes(q) || email.includes(q) || dept.includes(q);
     });
+    return [...base].sort((a, b) => Number(Boolean(b.user_id)) - Number(Boolean(a.user_id)));
   }, [assigneeQuery, employees]);
 
   const toggleAssignee = (userId: string): void => {
@@ -197,14 +196,25 @@ export const TasksScreen = () => {
               keyboardShouldPersistTaps="handled"
               renderItem={({ item }) => {
                 const userId = item.user_id;
-                if (!userId) return null;
-                const checked = selectedAssigneeIds.includes(userId);
+                const canAssign = Boolean(userId);
+                const checked = userId ? selectedAssigneeIds.includes(userId) : false;
                 const dept = (item.departments ?? []).map((d) => d.name).filter(Boolean).join(', ');
                 return (
-                  <Pressable style={[styles.empRow, checked && styles.empRowChecked]} onPress={() => toggleAssignee(userId)}>
+                  <Pressable
+                    style={[
+                      styles.empRow,
+                      checked && styles.empRowChecked,
+                      !canAssign && styles.empRowDisabled,
+                    ]}
+                    onPress={() => (userId ? toggleAssignee(userId) : undefined)}
+                    disabled={!canAssign}
+                  >
                     <View style={styles.empLeft}>
                       <Text style={styles.empName}>{item.first_name} {item.last_name}</Text>
-                      <Text style={styles.empMeta}>{dept || '—'}</Text>
+                      <Text style={styles.empMeta}>
+                        {dept || '—'}
+                        {!canAssign ? ' · нет доступа (нет аккаунта)' : ''}
+                      </Text>
                     </View>
                     <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
                       <Text style={styles.checkboxText}>{checked ? '✓' : ''}</Text>
@@ -305,6 +315,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   empRowChecked: { backgroundColor: '#EEF2FF' },
+  empRowDisabled: { opacity: 0.55 },
   empLeft: { flex: 1, paddingRight: 10 },
   empName: { color: '#111827', fontWeight: '800', fontSize: 13 },
   empMeta: { color: '#6B7280', fontSize: 12, marginTop: 2 },
