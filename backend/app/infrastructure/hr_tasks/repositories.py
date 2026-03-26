@@ -4,7 +4,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.hr_tasks.repositories import HrTaskAssignmentsRepository, HrTasksRepository
@@ -79,3 +79,25 @@ class SQLAlchemyHrTaskAssignmentsRepository(HrTaskAssignmentsRepository):
         )
         return result.rowcount > 0
 
+    async def unseen_count(self, *, user_id: uuid.UUID) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(HrTaskAssignment)
+            .where(
+                and_(
+                    HrTaskAssignment.user_id == user_id,
+                    HrTaskAssignment.completed_at.is_(None),
+                    HrTaskAssignment.seen_at.is_(None),
+                )
+            )
+        )
+        result = await self._session.execute(stmt)
+        return int(result.scalar() or 0)
+
+    async def mark_all_seen(self, *, user_id: uuid.UUID) -> None:
+        now = datetime.now(UTC)
+        await self._session.execute(
+            update(HrTaskAssignment)
+            .where(and_(HrTaskAssignment.user_id == user_id, HrTaskAssignment.seen_at.is_(None)))
+            .values(seen_at=now)
+        )

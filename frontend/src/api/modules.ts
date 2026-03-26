@@ -201,9 +201,29 @@ export const modulesApi = {
     });
   },
 
+  async getUnreadLeaveRequestsCount(): Promise<number> {
+    const data = await authApi.request<{ count?: number }>('/leave-requests/unread-count');
+    return typeof data?.count === 'number' ? data.count : 0;
+  },
+
+  async markLeaveRequestsRead(): Promise<number> {
+    const data = await authApi.request<{ count?: number }>('/leave-requests/mark-read', { method: 'POST' });
+    return typeof data?.count === 'number' ? data.count : 0;
+  },
+
   async cancelLeaveRequest(requestId: string): Promise<LeaveRequest> {
     return authApi.request<LeaveRequest>(`/leave-requests/${requestId}/cancel`, {
       method: 'POST',
     });
+  },
+
+  async getNewMyTasksCount(): Promise<number> {
+    const data = await authApi.request<{ count?: number }>('/hr-tasks/my/new-count');
+    return typeof data?.count === 'number' ? data.count : 0;
+  },
+
+  async markMyTasksSeen(): Promise<number> {
+    const data = await authApi.request<{ count?: number }>('/hr-tasks/my/mark-seen', { method: 'POST' });
+    return typeof data?.count === 'number' ? data.count : 0;
   },
 };

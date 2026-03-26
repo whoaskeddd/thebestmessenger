@@ -34,6 +34,13 @@ export const LeavesScreen = () => {
       setLoading(true);
       const data = await modulesApi.getLeaveRequests();
       setItems(data);
+      if (isHr) {
+        try {
+          await modulesApi.markLeaveRequestsRead();
+        } catch {
+          // ignore mark-read errors
+        }
+      }
     } catch (error) {
       Alert.alert('Ошибка', error instanceof Error ? error.message : 'Не удалось загрузить заявки');
     } finally {
@@ -97,7 +104,7 @@ export const LeavesScreen = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.wrap}>
+    <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Отпуска и заявки</Text>
 
       {!isHr ? (

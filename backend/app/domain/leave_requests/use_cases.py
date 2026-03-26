@@ -4,16 +4,27 @@ import uuid
 from datetime import date
 
 from app.domain.leave_requests.exceptions import Forbidden, InvalidTransition, NotFound
-from app.domain.leave_requests.repositories import LeaveRequestEventsRepository, LeaveRequestsRepository
+from app.domain.leave_requests.repositories import (
+    LeaveRequestEventsRepository,
+    LeaveRequestReadsRepository,
+    LeaveRequestsRepository,
+)
 
 
 HR_ROLES = {"admin", "hr"}
 
 
 class LeaveRequestsService:
-    def __init__(self, *, requests: LeaveRequestsRepository, events: LeaveRequestEventsRepository) -> None:
+    def __init__(
+        self,
+        *,
+        requests: LeaveRequestsRepository,
+        events: LeaveRequestEventsRepository,
+        reads: LeaveRequestReadsRepository,
+    ) -> None:
         self._requests = requests
         self._events = events
+        self._reads = reads
 
     async def create(
         self,
@@ -145,3 +156,12 @@ class LeaveRequestsService:
         )
         return updated
 
+    async def unread_count(self, *, actor_user_id: uuid.UUID, actor_role: str) -> int:
+        if actor_role not in HR_ROLES:
+            raise Forbidden()
+        return await self._reads.unread_count_for_hr(user_id=actor_user_id)
+
+    async def mark_all_read(self, *, actor_user_id: uuid.UUID, actor_role: str) -> None:
+        if actor_role not in HR_ROLES:
+            raise Forbidden()
+        await self._reads.mark_all_submitted_read(user_id=actor_user_id)

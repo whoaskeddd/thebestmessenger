@@ -10,8 +10,10 @@ from app.domain.leave_requests.exceptions import Forbidden, InvalidTransition, N
 from app.domain.leave_requests.use_cases import LeaveRequestsService
 from app.infrastructure.leave_requests.repositories import (
     SQLAlchemyLeaveRequestEventsRepository,
+    SQLAlchemyLeaveRequestReadsRepository,
     SQLAlchemyLeaveRequestsRepository,
 )
+from app.schemas.common import CountResponse
 from app.schemas.leave_requests import (
     LeaveRequestAction,
     LeaveRequestCreate,
@@ -28,6 +30,7 @@ def _service(session: DbSessionDep) -> LeaveRequestsService:
     return LeaveRequestsService(
         requests=SQLAlchemyLeaveRequestsRepository(session),
         events=SQLAlchemyLeaveRequestEventsRepository(session),
+        reads=SQLAlchemyLeaveRequestReadsRepository(session),
     )
 
 
@@ -173,3 +176,32 @@ async def cancel(request_id: uuid.UUID, session: DbSessionDep, user=Depends(get_
         await session.rollback()
         raise HTTPException(status_code=409, detail="invalid status transition") from exc
 
+
+@router.get(
+    "/unread-count",
+    response_model=CountResponse,
+    dependencies=[Depends(require_role("admin", "hr"))],
+)
+async def unread_count(session: DbSessionDep, user=Depends(get_current_user)) -> CountResponse:
+    try:
+        count = await _service(session).unread_count(actor_user_id=user.id, actor_role=user.role)
+        return CountResponse(count=count)
+    except Forbidden as exc:
+        raise HTTPException(status_code=403, detail="forbidden") from exc
+
+
+@router.post(
+    "/mark-read",
+    response_model=CountResponse,
+    dependencies=[Depends(require_role("admin", "hr"))],
+)
+async def mark_read(session: DbSessionDep, user=Depends(get_current_user)) -> CountResponse:
+    try:
+        await _service(session).mark_all_read(actor_user_id=user.id, actor_role=user.role)
+        await session.commit()
+        # Return current unread count after marking
+        count = await _service(session).unread_count(actor_user_id=user.id, actor_role=user.role)
+        return CountResponse(count=count)
+    except Forbidden as exc:
+        await session.rollback()
+        raise HTTPException(status_code=403, detail="forbidden") from exc

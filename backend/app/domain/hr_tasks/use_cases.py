@@ -58,8 +58,13 @@ class HrTasksService:
         if not ok:
             raise NotFound()
 
+    async def new_count(self, *, actor_user_id: uuid.UUID) -> int:
+        return await self._assignments.unseen_count(user_id=actor_user_id)
+
+    async def mark_my_tasks_seen(self, *, actor_user_id: uuid.UUID) -> None:
+        await self._assignments.mark_all_seen(user_id=actor_user_id)
+
     async def list_all(self, *, actor_role: str, limit: int, offset: int):
         if actor_role not in HR_ROLES:
             raise Forbidden()
         return await self._tasks.list_all(limit=limit, offset=offset)
-

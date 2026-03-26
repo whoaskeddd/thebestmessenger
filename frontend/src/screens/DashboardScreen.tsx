@@ -1,5 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { modulesApi } from '../api/modules';
@@ -14,6 +15,8 @@ export const DashboardScreen = ({ navigation }: Props) => {
   const isHr = user?.role === 'hr' || user?.role === 'admin';
   const [tasks, setTasks] = useState<HrTask[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [newTasksCount, setNewTasksCount] = useState(0);
+  const [unreadLeaveCount, setUnreadLeaveCount] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -29,6 +32,23 @@ export const DashboardScreen = ({ navigation }: Props) => {
       }
     })();
   }, []);
+
+  const loadBadges = useCallback(() => {
+    (async () => {
+      try {
+        const [tasksCount, leaveCount] = await Promise.all([
+          modulesApi.getNewMyTasksCount(),
+          isHr ? modulesApi.getUnreadLeaveRequestsCount() : Promise.resolve(0),
+        ]);
+        setNewTasksCount(tasksCount);
+        setUnreadLeaveCount(leaveCount);
+      } catch {
+        // ignore badge errors
+      }
+    })();
+  }, [isHr]);
+
+  useFocusEffect(loadBadges);
 
   return (
     <ScrollView contentContainerStyle={styles.wrap}>
@@ -58,9 +78,9 @@ export const DashboardScreen = ({ navigation }: Props) => {
       <View style={styles.grid}>
         {isHr ? <QuickButton title="Сотрудники" onPress={() => navigation.navigate('Employees')} /> : null}
         {isHr ? <QuickButton title="Карточка" onPress={() => navigation.navigate('EmployeeCard', undefined)} /> : null}
-        <QuickButton title="Заявки" onPress={() => navigation.navigate('Leaves')} />
+        <QuickButton title="Заявки" onPress={() => navigation.navigate('Leaves')} badgeCount={isHr ? unreadLeaveCount : 0} />
         <QuickButton title="Новости" onPress={() => navigation.navigate('News')} />
-        <QuickButton title="Задачи" onPress={() => navigation.navigate('Tasks')} />
+        <QuickButton title="Задачи" onPress={() => navigation.navigate('Tasks')} badgeCount={newTasksCount} />
         <QuickButton title="Чаты" onPress={() => navigation.navigate('Chats')} />
         <QuickButton
           title="Комната"
@@ -75,9 +95,14 @@ export const DashboardScreen = ({ navigation }: Props) => {
   );
 };
 
-const QuickButton = ({ title, onPress }: { title: string; onPress: () => void }) => (
+const QuickButton = ({ title, onPress, badgeCount }: { title: string; onPress: () => void; badgeCount?: number }) => (
   <Pressable style={styles.quickButton} onPress={onPress}>
     <Text style={styles.quickButtonText}>{title}</Text>
+    {badgeCount ? (
+      <View style={styles.badge}>
+        <Text style={styles.badgeText}>{badgeCount > 99 ? '99+' : String(badgeCount)}</Text>
+      </View>
+    ) : null}
   </Pressable>
 );
 
@@ -126,11 +151,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 10,
+    position: 'relative',
   },
   quickButtonText: {
     color: '#4F46E5',
     fontSize: 13,
     fontWeight: '700',
+  },
+  badge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 999,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
   },
   logoutBtn: {
     marginTop: 6,

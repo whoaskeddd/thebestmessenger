@@ -4,11 +4,16 @@ import uuid
 from collections.abc import Sequence
 from datetime import date
 
-from sqlalchemy import select, update
+from sqlalchemy import and_, func, literal, select, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.leave_requests.repositories import LeaveRequestEventsRepository, LeaveRequestsRepository
-from app.infrastructure.leave_requests.models import LeaveRequest, LeaveRequestEvent
+from app.domain.leave_requests.repositories import (
+    LeaveRequestEventsRepository,
+    LeaveRequestReadsRepository,
+    LeaveRequestsRepository,
+)
+from app.infrastructure.leave_requests.models import LeaveRequest, LeaveRequestEvent, LeaveRequestRead
 
 
 class SQLAlchemyLeaveRequestsRepository(LeaveRequestsRepository):
@@ -107,3 +112,33 @@ class SQLAlchemyLeaveRequestEventsRepository(LeaveRequestEventsRepository):
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
+
+class SQLAlchemyLeaveRequestReadsRepository(LeaveRequestReadsRepository):
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def unread_count_for_hr(self, *, user_id: uuid.UUID) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(LeaveRequest)
+            .where(LeaveRequest.status == "submitted")
+            .where(
+                ~select(LeaveRequestRead.id)
+                .where(and_(LeaveRequestRead.request_id == LeaveRequest.id, LeaveRequestRead.user_id == user_id))
+                .exists()
+            )
+        )
+        result = await self._session.execute(stmt)
+        return int(result.scalar() or 0)
+
+    async def mark_all_submitted_read(self, *, user_id: uuid.UUID) -> None:
+        # Insert "read" rows for all currently submitted requests, ignore conflicts.
+        stmt = (
+            insert(LeaveRequestRead.__table__)
+            .from_select(
+                ["request_id", "user_id"],
+                select(LeaveRequest.id, literal(user_id)).where(LeaveRequest.status == "submitted"),
+            )
+            .on_conflict_do_nothing(constraint="uq_leave_request_read")
+        )
+        await self._session.execute(stmt)

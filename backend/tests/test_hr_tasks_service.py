@@ -45,6 +45,7 @@ class FakeAssignmentsRepo:
     def __init__(self) -> None:
         self.assigned: list[tuple[uuid.UUID, uuid.UUID]] = []
         self.completed: set[tuple[uuid.UUID, uuid.UUID]] = set()
+        self.seen: set[tuple[uuid.UUID, uuid.UUID]] = set()
 
     async def assign(self, *, task_id, user_ids):
         for uid in user_ids:
@@ -58,6 +59,15 @@ class FakeAssignmentsRepo:
             return False
         self.completed.add((task_id, user_id))
         return True
+
+    async def unseen_count(self, *, user_id):
+        pairs = [p for p in self.assigned if p[1] == user_id]
+        return sum(1 for p in pairs if p not in self.completed and p not in self.seen)
+
+    async def mark_all_seen(self, *, user_id):
+        for task_id, uid in self.assigned:
+            if uid == user_id:
+                self.seen.add((task_id, uid))
 
 
 @pytest.mark.asyncio
@@ -103,3 +113,28 @@ async def test_hr_create_assign_and_complete() -> None:
     with pytest.raises(NotFound):
         await service.complete(uuid.uuid4(), actor_user_id=user_id)
 
+
+@pytest.mark.asyncio
+async def test_employee_new_count_and_mark_seen() -> None:
+    tasks = FakeTasksRepo()
+    assignments = FakeAssignmentsRepo()
+    service = HrTasksService(tasks=tasks, assignments=assignments)
+
+    hr_id = uuid.uuid4()
+    user_id = uuid.uuid4()
+    task = await service.create(
+        actor_user_id=hr_id,
+        actor_role="hr",
+        title="t",
+        description=None,
+        due_date=None,
+        announcement_id=None,
+        assignee_user_ids=[user_id],
+    )
+
+    assert await service.new_count(actor_user_id=user_id) == 1
+    await service.mark_my_tasks_seen(actor_user_id=user_id)
+    assert await service.new_count(actor_user_id=user_id) == 0
+
+    await service.complete(task.id, actor_user_id=user_id)
+    assert await service.new_count(actor_user_id=user_id) == 0

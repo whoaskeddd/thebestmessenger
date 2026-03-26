@@ -76,9 +76,6 @@ export const EmployeeCardScreen = ({ route }: Props) => {
           <Pressable style={[styles.action, { backgroundColor: '#FF6B6B' }]}>
             <Text style={styles.actionText}>Написать</Text>
           </Pressable>
-          <Pressable style={[styles.action, { backgroundColor: '#F0F5FF' }]}>
-            <Text style={[styles.actionText, { color: '#4F46E5' }]}>Позвонить</Text>
-          </Pressable>
         </>
       ) : null}
     </ScrollView>

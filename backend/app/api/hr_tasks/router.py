@@ -13,6 +13,7 @@ from app.infrastructure.hr_tasks.repositories import (
     SQLAlchemyHrTaskAssignmentsRepository,
     SQLAlchemyHrTasksRepository,
 )
+from app.schemas.common import CountResponse
 from app.schemas.hr_tasks import CompleteResponse, HrTaskCreate, HrTaskResponse, MyTaskResponse
 
 
@@ -85,6 +86,20 @@ async def my_tasks(
     ]
 
 
+@router.get("/my/new-count", response_model=CountResponse)
+async def my_new_count(session: DbSessionDep, user=Depends(get_current_user)) -> CountResponse:
+    count = await _service(session).new_count(actor_user_id=user.id)
+    return CountResponse(count=count)
+
+
+@router.post("/my/mark-seen", response_model=CountResponse)
+async def mark_my_seen(session: DbSessionDep, user=Depends(get_current_user)) -> CountResponse:
+    await _service(session).mark_my_tasks_seen(actor_user_id=user.id)
+    await session.commit()
+    count = await _service(session).new_count(actor_user_id=user.id)
+    return CountResponse(count=count)
+
+
 @router.post("/{task_id}/complete", response_model=CompleteResponse)
 async def complete(task_id: uuid.UUID, session: DbSessionDep, user=Depends(get_current_user)) -> CompleteResponse:
     try:
@@ -112,4 +127,3 @@ async def list_all(
         return [_task_resp(t) for t in items]
     except Forbidden as exc:
         raise HTTPException(status_code=403, detail="forbidden") from exc
-

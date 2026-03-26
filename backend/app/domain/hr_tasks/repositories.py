@@ -20,6 +20,7 @@ class HrTaskAssignmentDTO(Protocol):
     id: uuid.UUID
     task_id: uuid.UUID
     user_id: uuid.UUID
+    seen_at: datetime | None
     completed_at: datetime | None
 
 
@@ -48,3 +49,6 @@ class HrTaskAssignmentsRepository(Protocol):
 
     async def complete(self, *, task_id: uuid.UUID, user_id: uuid.UUID) -> bool: ...
 
+    async def unseen_count(self, *, user_id: uuid.UUID) -> int: ...
+
+    async def mark_all_seen(self, *, user_id: uuid.UUID) -> None: ...

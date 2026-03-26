@@ -37,6 +37,13 @@ export const TasksScreen = () => {
       ]);
       setTasks(tasksData);
       setEmployees(employeesData);
+      if (!isHr) {
+        try {
+          await modulesApi.markMyTasksSeen();
+        } catch {
+          // ignore mark-seen errors
+        }
+      }
     } catch (error) {
       Alert.alert('Ошибка', error instanceof Error ? error.message : 'Не удалось загрузить задачи');
     } finally {
