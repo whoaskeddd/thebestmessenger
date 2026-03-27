@@ -21,6 +21,7 @@ import type {
   MeResponse,
   MyTaskResponse,
 } from '../types/api';
+import { Platform } from 'react-native';
 import { authApi } from './auth';
 
 export const modulesApi = {
@@ -303,11 +304,21 @@ export const modulesApi = {
     payload: { uri: string; durationSeconds?: number; mimeType?: string; fileName?: string },
   ): Promise<ChatMessage> {
     const form = new FormData();
-    form.append('file', {
-      uri: payload.uri,
-      name: payload.fileName ?? 'voice-message.m4a',
-      type: payload.mimeType ?? 'audio/m4a',
-    } as any);
+    const fileName = payload.fileName ?? 'voice-message.m4a';
+    const mimeType = payload.mimeType ?? 'audio/m4a';
+
+    if (Platform.OS === 'web') {
+      const response = await fetch(payload.uri);
+      const blob = await response.blob();
+      form.append('file', new File([blob], fileName, { type: blob.type || mimeType }));
+    } else {
+      form.append('file', {
+        uri: payload.uri,
+        name: fileName,
+        type: mimeType,
+      } as any);
+    }
+
     if (typeof payload.durationSeconds === 'number') {
       form.append('duration_seconds', String(payload.durationSeconds));
     }
