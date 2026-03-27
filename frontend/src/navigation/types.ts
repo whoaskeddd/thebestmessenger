@@ -2,6 +2,7 @@ export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   Dashboard: undefined;
+  Profile: undefined;
   Employees: undefined;
   EmployeeCard: { employeeId?: string } | undefined;
   Leaves: undefined;

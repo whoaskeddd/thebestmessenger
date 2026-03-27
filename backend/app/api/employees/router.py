@@ -174,10 +174,15 @@ async def create_employee(payload: EmployeeCreate, session: DbSessionDep) -> Emp
 @router.get("/employees/me", response_model=EmployeeResponse)
 async def get_my_employee(session: DbSessionDep, current_user=Depends(get_current_user)) -> EmployeeResponse:
     try:
-        emp = await _service(session).get_my_employee(current_user.id)
+        emp = await _service(session).ensure_my_employee(user_id=current_user.id, email=getattr(current_user, "email", None))
+        await session.commit()
         return _employee_response(emp)
     except NotFound as exc:
+        await session.rollback()
         raise HTTPException(status_code=404, detail="employee profile not found") from exc
+    except IntegrityError as exc:
+        await session.rollback()
+        raise HTTPException(status_code=409, detail="employee conflict") from exc
 
 
 @router.patch("/employees/me", response_model=EmployeeResponse)
@@ -190,7 +195,7 @@ async def update_my_employee(
         return value if field in fields else UNSET
 
     try:
-        profile = await _service(session).get_my_employee(current_user.id)
+        profile = await _service(session).ensure_my_employee(user_id=current_user.id, email=getattr(current_user, "email", None))
         emp = await _service(session).update_employee(
             profile.id,
             user_id=UNSET,

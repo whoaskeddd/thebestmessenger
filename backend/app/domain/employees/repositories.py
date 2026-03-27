@@ -61,6 +61,8 @@ class EmployeesRepository(Protocol):
 
     async def get_by_user_id(self, user_id: uuid.UUID) -> EmployeeDTO | None: ...
 
+    async def get_by_work_email(self, work_email: str) -> EmployeeDTO | None: ...
+
     async def list(
         self,
         *,

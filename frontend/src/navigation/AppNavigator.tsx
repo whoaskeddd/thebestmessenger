@@ -11,6 +11,7 @@ import { EmployeesScreen } from '../screens/EmployeesScreen';
 import { LeavesScreen } from '../screens/LeavesScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { NewsScreen } from '../screens/NewsScreen';
+import { ProfileScreen } from '../screens/ProfileScreen';
 import { TasksScreen } from '../screens/TasksScreen';
 import type { RootStackParamList } from './types';
 
@@ -32,6 +33,7 @@ export const AppNavigator = () => {
       {isAuthenticated ? (
         <>
           <Stack.Screen name="Dashboard" component={DashboardScreen} />
+          <Stack.Screen name="Profile" component={ProfileScreen} />
           <Stack.Screen name="Employees" component={EmployeesScreen} />
           <Stack.Screen name="EmployeeCard" component={EmployeeCardScreen} />
           <Stack.Screen name="Leaves" component={LeavesScreen} />

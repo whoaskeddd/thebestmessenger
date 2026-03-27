@@ -103,6 +103,15 @@ class SQLAlchemyEmployeesRepository(EmployeesRepository):
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_by_work_email(self, work_email: str) -> Employee | None:
+        stmt = (
+            select(Employee)
+            .where(Employee.work_email == work_email)
+            .options(selectinload(Employee.departments))
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def list(
         self,
         *,

@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
   wrap: { paddingTop: 16, paddingHorizontal: 20, paddingBottom: 120, gap: 10, backgroundColor: colors.pageBg },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { ...typography.title, fontFamily: fontFamilies.primary, color: colors.textPrimary },
-  plus: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.actionBlue, alignItems: 'center', justifyContent: 'center' },
+  plus: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.actionBlue, alignItems: 'center', justifyContent: 'center' },
   plusText: { color: colors.surface, fontSize: 18, fontWeight: '700', fontFamily: fontFamilies.primary, marginTop: -1 },
   pickerCard: {
     borderRadius: 16,

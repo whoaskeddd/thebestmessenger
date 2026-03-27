@@ -75,7 +75,7 @@ export const DashboardScreen = ({ navigation }: Props) => {
               <Text style={styles.profileRole}>{roleLabel}</Text>
             </View>
             <View style={styles.profileActions}>
-              <Pressable style={styles.profileBtn} onPress={() => navigation.navigate('EmployeeCard')}>
+              <Pressable style={styles.profileBtn} onPress={() => navigation.navigate('Profile')}>
                 <Text style={styles.profileBtnText}>Профиль</Text>
               </Pressable>
               {isHr ? (

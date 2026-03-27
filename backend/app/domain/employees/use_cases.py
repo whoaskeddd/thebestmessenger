@@ -87,6 +87,46 @@ class EmployeesService:
             raise NotFound()
         return emp
 
+    async def ensure_my_employee(self, *, user_id: uuid.UUID, email: str | None):
+        emp = await self._employees.get_by_user_id(user_id)
+        if emp is not None:
+            return emp
+
+        email_norm = email.lower().strip() if email else None
+        if email_norm:
+            by_email = await self._employees.get_by_work_email(email_norm)
+            if by_email is not None:
+                if by_email.user_id is None:
+                    updated = await self._employees.update(
+                        by_email.id,
+                        user_id=user_id,
+                        first_name=None,
+                        last_name=None,
+                        middle_name=UNSET,
+                        work_email=UNSET,
+                        phone=UNSET,
+                        position=UNSET,
+                        hire_date=UNSET,
+                        is_active=None,
+                        department_ids=None,
+                    )
+                    if updated is not None:
+                        return updated
+                return by_email
+
+        first_name, last_name = _derive_names_from_email(email_norm or "")
+        return await self._employees.create(
+            user_id=user_id,
+            first_name=first_name,
+            last_name=last_name,
+            middle_name=None,
+            work_email=email_norm,
+            phone=None,
+            position=None,
+            hire_date=None,
+            department_ids=[],
+        )
+
     async def update_employee(
         self,
         employee_id: uuid.UUID,
@@ -132,3 +172,20 @@ class EmployeesService:
         ok = await self._employees.delete(employee_id)
         if not ok:
             raise NotFound()
+
+
+def _derive_names_from_email(email: str) -> tuple[str, str]:
+    local = (email.split("@")[0] if email else "").strip()
+    if not local:
+        return ("Employee", "User")
+    parts = [p for p in local.replace("-", ".").replace("_", ".").split(".") if p]
+    if len(parts) >= 2:
+        return (_title(parts[0]), _title(parts[1]))
+    return (_title(parts[0]), "User")
+
+
+def _title(value: str) -> str:
+    value = value.strip()
+    if not value:
+        return value
+    return value[0].upper() + value[1:]
