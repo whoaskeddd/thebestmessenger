@@ -138,9 +138,6 @@ export const LeavesScreen = () => {
         <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
           <View style={styles.headRow}>
             <Text style={styles.title}>Отпуска и заявки</Text>
-            <Pressable style={styles.iconBtn} onPress={() => Alert.alert('MVP', 'Фильтры появятся позже')}>
-              <Text style={styles.iconText}>≡</Text>
-            </Pressable>
           </View>
 
           {!isHr ? (
