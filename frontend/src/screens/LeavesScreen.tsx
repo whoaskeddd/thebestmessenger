@@ -257,8 +257,6 @@ const styles = StyleSheet.create({
   wrap: { paddingTop: 16, paddingHorizontal: 20, paddingBottom: 120, gap: 14, backgroundColor: colors.pageBg },
   headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { ...typography.title, fontFamily: fontFamilies.primary, color: colors.textPrimary },
-  iconBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  iconText: { color: colors.textSecondary, fontSize: 18, fontFamily: fontFamilies.primary },
   sectionTitle: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '700' },
   hint: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textSecondary },
   newReq: { borderRadius: 16, backgroundColor: colors.cardStrong, padding: 14, gap: 10 },

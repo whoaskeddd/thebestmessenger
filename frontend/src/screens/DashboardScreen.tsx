@@ -8,9 +8,10 @@ import { AppScreen } from '../components/layout/AppScreen';
 import { BottomPillNav } from '../components/navigation/BottomPillNav';
 import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/types';
+import { getSeenAnnouncementIds, getSeenLeaveStatuses } from '../services/notificationStorage';
 import { colors } from '../theme/colors';
 import { fontFamilies, typography } from '../theme/typography';
-import type { Announcement, HrTask } from '../types/api';
+import type { Announcement, Chat, HrTask, LeaveRequest } from '../types/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 
@@ -21,6 +22,7 @@ export const DashboardScreen = ({ navigation }: Props) => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [newTasksCount, setNewTasksCount] = useState(0);
   const [unreadLeaveCount, setUnreadLeaveCount] = useState(0);
+  const [notificationsCount, setNotificationsCount] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -40,17 +42,34 @@ export const DashboardScreen = ({ navigation }: Props) => {
   const loadBadges = useCallback(() => {
     (async () => {
       try {
-        const [tasksCount, leaveCount] = await Promise.all([
+        const leavesPromise = isHr
+          ? modulesApi.getLeaveRequests({ status: 'submitted', limit: 50, offset: 0 })
+          : modulesApi.getLeaveRequests({ limit: 50, offset: 0 });
+
+        const [tasksCount, leaveCountHr, chats, annItems, leaveItems, seenAnnouncements, seenLeaveStatuses] = await Promise.all([
           modulesApi.getNewMyTasksCount(),
           isHr ? modulesApi.getUnreadLeaveRequestsCount() : Promise.resolve(0),
+          modulesApi.getChats({ limit: 200, offset: 0 }).catch(() => [] as Chat[]),
+          modulesApi.getAnnouncements().catch(() => [] as Announcement[]),
+          leavesPromise.catch(() => [] as LeaveRequest[]),
+          user?.id ? getSeenAnnouncementIds(user.id) : Promise.resolve(new Set<string>()),
+          user?.id ? getSeenLeaveStatuses(user.id) : Promise.resolve({} as Record<string, string>),
         ]);
+
+        const chatUnread = chats.reduce((sum, chat) => sum + (chat.unreadCount ?? 0), 0);
+        const annUnread = annItems.reduce((sum, item) => sum + (seenAnnouncements.has(item.id) ? 0 : 1), 0);
+        const leaveCount = isHr
+          ? leaveCountHr
+          : leaveItems.filter((item) => item.status !== 'submitted' && seenLeaveStatuses[item.id] !== item.status).length;
+
         setNewTasksCount(tasksCount);
-        setUnreadLeaveCount(leaveCount);
+        setUnreadLeaveCount(isHr ? leaveCount : 0);
+        setNotificationsCount(tasksCount + leaveCount + chatUnread + annUnread);
       } catch {
         // ignore badge errors
       }
     })();
-  }, [isHr]);
+  }, [isHr, user?.id]);
 
   useFocusEffect(loadBadges);
 
@@ -63,8 +82,13 @@ export const DashboardScreen = ({ navigation }: Props) => {
         <ScrollView contentContainerStyle={styles.wrap}>
           <View style={styles.topRow}>
             <Text style={styles.title}>Главная</Text>
-            <Pressable style={styles.iconBtn} onPress={() => Alert.alert('MVP', 'Уведомления появятся позже')}>
+            <Pressable style={styles.iconBtn} onPress={() => navigation.navigate('Notifications')}>
               <Text style={styles.iconText}>🔔</Text>
+              {notificationsCount > 0 ? (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{notificationsCount > 99 ? '99+' : notificationsCount}</Text>
+                </View>
+              ) : null}
             </Pressable>
           </View>
 
@@ -177,9 +201,30 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
   },
   iconText: {
     fontSize: 16,
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    ...typography.caption,
+    fontFamily: fontFamilies.primary,
+    color: colors.surface,
+    fontSize: 9,
+    fontWeight: '700',
+    lineHeight: 10,
   },
   profileCard: {
     borderRadius: 16,

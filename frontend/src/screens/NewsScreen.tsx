@@ -66,7 +66,7 @@ export const NewsScreen = () => {
   return (
     <AppScreen>
       <View style={styles.page}>
-        <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
               <Text style={styles.title}>Новости</Text>
@@ -135,13 +135,14 @@ export const NewsScreen = () => {
 
 const styles = StyleSheet.create({
   page: { flex: 1 },
+  scroll: { flex: 1 },
   wrap: { paddingTop: 16, paddingHorizontal: 20, paddingBottom: 120, gap: 12, backgroundColor: colors.pageBg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { ...typography.title, fontFamily: fontFamilies.primary, color: colors.textPrimary },
   subtitle: { ...typography.subtitle, fontFamily: fontFamilies.primary, color: colors.textSecondary, marginTop: 2 },
   plus: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.actionBlue, alignItems: 'center', justifyContent: 'center' },
   plusText: { color: colors.surface, fontSize: 20, fontWeight: '700', fontFamily: fontFamilies.primary },
-  composer: { borderRadius: 16, backgroundColor: colors.cardStrong, padding: 14, gap: 8 },
+  composer: { borderRadius: 16, backgroundColor: colors.cardStrong, padding: 14, gap: 8, position: 'relative', zIndex: 2, elevation: 2 },
   composerTitle: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '700' },
   input: {
     height: 44,

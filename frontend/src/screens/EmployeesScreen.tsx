@@ -254,11 +254,7 @@ export const EmployeesScreen = ({ navigation }: Props) => {
                 returnKeyType="search"
                 onSubmitEditing={() => void load(search)}
               />
-              <View style={styles.filters}>
-                <FilterChip label="All" active />
-                <FilterChip label="Teams" active={false} />
-                <FilterChip label="Location" active={false} />
-              </View>
+
             </View>
 
             {isLoading ? <ActivityIndicator color={colors.primary} /> : null}
@@ -343,12 +339,6 @@ export const EmployeesScreen = ({ navigation }: Props) => {
   );
 };
 
-const FilterChip = ({ label, active }: { label: string; active: boolean }) => (
-  <View style={[styles.filterChip, active && styles.filterChipActive]}>
-    <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{label}</Text>
-  </View>
-);
-
 const styles = StyleSheet.create({
   wrap: { paddingTop: 16, paddingHorizontal: 20, paddingBottom: 32, gap: 14, backgroundColor: colors.pageBg },
   header: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -379,11 +369,6 @@ const styles = StyleSheet.create({
   },
   deptBtnText: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary, fontWeight: '700' },
   deptBtnMeta: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textSecondary },
-  filters: { flexDirection: 'row', gap: 8 },
-  filterChip: { height: 28, borderRadius: 999, backgroundColor: colors.primarySoft, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
-  filterChipActive: { backgroundColor: colors.surface },
-  filterChipText: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textSecondary, fontWeight: '700' },
-  filterChipTextActive: { color: colors.textPrimary },
   emptyCard: { borderRadius: 16, backgroundColor: colors.primarySoft, padding: 14 },
   emptyText: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textSecondary },
   createCard: {
