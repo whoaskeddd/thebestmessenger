@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import uuid
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field
 from pydantic import field_validator
 
@@ -21,6 +24,17 @@ class RegisterRequest(BaseModel):
         if not any(ch.isdigit() for ch in value):
             raise ValueError("password must include at least one digit")
         return value
+
+
+class AdminCreateUserRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=128)
+    role: Literal["employee", "hr"] = "employee"
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        return RegisterRequest.validate_password(value)
 
 
 class LoginRequest(BaseModel):
@@ -52,3 +66,10 @@ class MeResponse(BaseModel):
     id: str
     email: EmailStr
     role: str
+
+
+class UserResponse(BaseModel):
+    id: uuid.UUID
+    email: EmailStr
+    role: str
+    is_active: bool

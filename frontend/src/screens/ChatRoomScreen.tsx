@@ -11,6 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Audio, type AVPlaybackStatus } from 'expo-av';
 
 import { modulesApi } from '../api/modules';
 import { AppScreen } from '../components/layout/AppScreen';
@@ -32,9 +33,14 @@ export const ChatRoomScreen = ({ route, navigation }: Props) => {
   const [draft, setDraft] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setLoading] = useState(true);
+  const [isVoiceSending, setVoiceSending] = useState(false);
+  const [isRecording, setRecording] = useState(false);
   const [chatTitle, setChatTitle] = useState(route.params?.chatName ?? 'Чат');
   const scrollRef = useRef<ScrollView | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
 
   const chatId = route.params?.chatId;
 
@@ -98,6 +104,21 @@ export const ChatRoomScreen = ({ route, navigation }: Props) => {
     scrollRef.current?.scrollToEnd({ animated: true });
   }, [messages]);
 
+  useEffect(() => {
+    return () => {
+      const recording = recordingRef.current;
+      if (recording) {
+        void recording.stopAndUnloadAsync().catch(() => undefined);
+        recordingRef.current = null;
+      }
+      const sound = soundRef.current;
+      if (sound) {
+        void sound.unloadAsync().catch(() => undefined);
+        soundRef.current = null;
+      }
+    };
+  }, []);
+
   const send = async (): Promise<void> => {
     if (!chatId) return;
     const text = draft.trim();
@@ -117,6 +138,90 @@ export const ChatRoomScreen = ({ route, navigation }: Props) => {
     } catch {
       // Restore draft if send failed via REST fallback.
       setDraft(text);
+    }
+  };
+
+  const toggleVoiceRecording = async (): Promise<void> => {
+    if (!chatId || isVoiceSending) return;
+
+    if (isRecording) {
+      const active = recordingRef.current;
+      if (!active) {
+        setRecording(false);
+        return;
+      }
+      try {
+        setVoiceSending(true);
+        await active.stopAndUnloadAsync();
+        const status = await active.getStatusAsync();
+        const durationMillis = status.durationMillis ?? 0;
+        const durationSeconds = Math.max(1, Math.round(durationMillis / 1000));
+        const uri = active.getURI();
+        recordingRef.current = null;
+        setRecording(false);
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+        });
+
+        if (!uri) return;
+
+        const created = await modulesApi.sendVoiceMessage(chatId, {
+          uri,
+          durationSeconds,
+          mimeType: 'audio/m4a',
+          fileName: `voice-${Date.now()}.m4a`,
+        });
+        setMessages((prev) => (prev.some((msg) => msg.id === created.id) ? prev : [...prev, created]));
+        await modulesApi.markChatRead(chatId);
+      } catch {
+        // Voice send failures are ignored to keep chat usable.
+      } finally {
+        setVoiceSending(false);
+      }
+      return;
+    }
+
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) return;
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+      const recording = new Audio.Recording();
+      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      await recording.startAsync();
+      recordingRef.current = recording;
+      setRecording(true);
+    } catch {
+      setRecording(false);
+      recordingRef.current = null;
+    }
+  };
+
+  const playVoice = async (message: ChatMessage): Promise<void> => {
+    if (message.messageType !== 'voice' || !message.voiceUrl) return;
+    const hostBase = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+    const uri = message.voiceUrl.startsWith('http') ? message.voiceUrl : `${hostBase}${message.voiceUrl}`;
+
+    try {
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+      const { sound } = await Audio.Sound.createAsync({ uri });
+      soundRef.current = sound;
+      setPlayingMessageId(message.id);
+      sound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
+        if (!status.isLoaded || status.didJustFinish) {
+          setPlayingMessageId((prev) => (prev === message.id ? null : prev));
+        }
+      });
+      await sound.playAsync();
+    } catch {
+      setPlayingMessageId(null);
     }
   };
 
@@ -145,7 +250,17 @@ export const ChatRoomScreen = ({ route, navigation }: Props) => {
               <View key={message.id} style={fromMe ? styles.outWrap : styles.inWrap}>
                 <View style={fromMe ? styles.outBubble : styles.inBubble}>
                   {!fromMe ? <Text style={styles.senderName}>{message.senderName}</Text> : null}
-                  <Text style={fromMe ? styles.outText : styles.inText}>{message.body ?? ''}</Text>
+                  {message.messageType === 'voice' ? (
+                    <Pressable style={styles.voiceBtn} onPress={() => void playVoice(message)}>
+                      <Text style={styles.voiceBtnText}>
+                        {playingMessageId === message.id
+                          ? 'Воспроизводится...'
+                          : `Голосовое${formatVoiceDuration(message.voiceDurationSeconds)}`}
+                      </Text>
+                    </Pressable>
+                  ) : (
+                    <Text style={fromMe ? styles.outText : styles.inText}>{message.body ?? ''}</Text>
+                  )}
                 </View>
                 <Text style={styles.time}>{formatTimeLabel(message.createdAt)}</Text>
               </View>
@@ -154,6 +269,13 @@ export const ChatRoomScreen = ({ route, navigation }: Props) => {
         </ScrollView>
 
         <View style={styles.composer}>
+          <Pressable
+            style={[styles.voiceRecordBtn, isRecording ? styles.voiceRecordBtnActive : null]}
+            onPress={() => void toggleVoiceRecording()}
+            disabled={isVoiceSending}
+          >
+            <Text style={styles.voiceRecordText}>{isRecording ? '■' : '●'}</Text>
+          </Pressable>
           <TextInput
             style={styles.input}
             value={draft}
@@ -175,6 +297,13 @@ function formatTimeLabel(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatVoiceDuration(durationSeconds: number | null | undefined): string {
+  if (!durationSeconds || durationSeconds <= 0) return '';
+  const minutes = Math.floor(durationSeconds / 60);
+  const seconds = durationSeconds % 60;
+  return ` ${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
 const styles = StyleSheet.create({
@@ -199,6 +328,18 @@ const styles = StyleSheet.create({
   senderName: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textSecondary, marginBottom: 2 },
   inText: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary },
   outText: { ...typography.body, fontFamily: fontFamilies.primary, color: colors.textPrimary },
+  voiceBtn: {
+    borderRadius: 10,
+    backgroundColor: colors.pageBg,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  voiceBtnText: {
+    ...typography.caption,
+    fontFamily: fontFamilies.primary,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
   time: { ...typography.caption, fontFamily: fontFamilies.primary, color: colors.textMuted, fontSize: 11 },
   composer: {
     minHeight: 56,
@@ -212,6 +353,26 @@ const styles = StyleSheet.create({
     marginBottom: 21,
   },
   input: { flex: 1, color: colors.textPrimary, fontFamily: fontFamilies.primary, fontSize: 13, paddingVertical: 0 },
+  voiceRecordBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.textMuted,
+  },
+  voiceRecordBtnActive: {
+    backgroundColor: '#ffe5e5',
+    borderColor: '#e04f4f',
+  },
+  voiceRecordText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamilies.primary,
+    fontSize: 14,
+    lineHeight: 14,
+  },
   sendBtn: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
   sendText: { color: colors.surface, fontFamily: fontFamilies.primary, fontSize: 16, marginTop: -2 },
 });

@@ -27,7 +27,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Employees'>;
 
 export const EmployeesScreen = ({ navigation }: Props) => {
   const { user } = useAuth();
-  const isHr = user?.role === 'hr' || user?.role === 'admin';
+  const isAdmin = user?.role === 'admin';
+  const isHr = user?.role === 'hr' || isAdmin;
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setLoading] = useState(true);
   const [isProvisioning, setProvisioning] = useState(false);
@@ -101,6 +102,43 @@ export const EmployeesScreen = ({ navigation }: Props) => {
   };
 
   const onProvision = async (): Promise<void> => {
+    if (isAdmin) {
+      if (!email.trim() || !password.trim()) {
+        Alert.alert('Проверьте поля', 'Заполните email и пароль');
+        return;
+      }
+      const emailError = validateEmail(email);
+      if (emailError) {
+        Alert.alert('Проверьте email', emailError);
+        return;
+      }
+      const passwordError = validatePassword(password.trim());
+      if (passwordError) {
+        Alert.alert('Проверьте пароль', passwordError);
+        return;
+      }
+
+      setProvisioning(true);
+      try {
+        const created = await modulesApi.createUserByAdmin({
+          email: email.trim().toLowerCase(),
+          password: password.trim(),
+          role: 'hr',
+        });
+        Alert.alert(
+          'HR создан',
+          `Новый HR:\nЛогин: ${created.email}\nПароль: ${password.trim()}`,
+        );
+        setEmail('');
+        setPassword('');
+      } catch (error) {
+        Alert.alert('Ошибка создания', error instanceof Error ? error.message : 'Не удалось создать HR');
+      } finally {
+        setProvisioning(false);
+      }
+      return;
+    }
+
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !password.trim()) {
       Alert.alert('Проверьте поля', 'Заполните имя, фамилию, email и пароль');
       return;
@@ -181,47 +219,51 @@ export const EmployeesScreen = ({ navigation }: Props) => {
           <>
             {showProvision ? (
               <View style={styles.createCard}>
-                <Text style={styles.createTitle}>Создать сотрудника</Text>
-                <View style={styles.row2}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Имя"
-                    value={firstName}
-                    onChangeText={setFirstName}
-                    placeholderTextColor={colors.textMuted}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Фамилия"
-                    value={lastName}
-                    onChangeText={setLastName}
-                    placeholderTextColor={colors.textMuted}
-                  />
-                </View>
+                <Text style={styles.createTitle}>{isAdmin ? 'Создать HR' : 'Создать сотрудника'}</Text>
+                {!isAdmin ? (
+                  <>
+                    <View style={styles.row2}>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Имя"
+                        value={firstName}
+                        onChangeText={setFirstName}
+                        placeholderTextColor={colors.textMuted}
+                      />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Фамилия"
+                        value={lastName}
+                        onChangeText={setLastName}
+                        placeholderTextColor={colors.textMuted}
+                      />
+                    </View>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Должность (необязательно)"
+                      value={position}
+                      onChangeText={setPosition}
+                      placeholderTextColor={colors.textMuted}
+                    />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Дата найма (ДД.ММ.ГГГГ)"
+                      value={hireDate}
+                      onChangeText={(value) => setHireDate(formatDateInput(value))}
+                      placeholderTextColor={colors.textMuted}
+                      keyboardType="number-pad"
+                    />
+                    <Pressable style={styles.deptBtn} onPress={() => setDeptPickerOpen(true)}>
+                      <Text style={styles.deptBtnText}>{selectedDepartmentsLabel}</Text>
+                      {selectedDepartmentIds.length ? (
+                        <Text style={styles.deptBtnMeta}>Выбрано: {selectedDepartmentIds.length}</Text>
+                      ) : null}
+                    </Pressable>
+                  </>
+                ) : null}
                 <TextInput
                   style={styles.input}
-                  placeholder="Должность (необязательно)"
-                  value={position}
-                  onChangeText={setPosition}
-                  placeholderTextColor={colors.textMuted}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Дата найма (ДД.ММ.ГГГГ)"
-                  value={hireDate}
-                  onChangeText={(value) => setHireDate(formatDateInput(value))}
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="number-pad"
-                />
-                <Pressable style={styles.deptBtn} onPress={() => setDeptPickerOpen(true)}>
-                  <Text style={styles.deptBtnText}>{selectedDepartmentsLabel}</Text>
-                  {selectedDepartmentIds.length ? (
-                    <Text style={styles.deptBtnMeta}>Выбрано: {selectedDepartmentIds.length}</Text>
-                  ) : null}
-                </Pressable>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Логин (email)"
+                  placeholder={isAdmin ? 'Логин HR (email)' : 'Логин (email)'}
                   value={email}
                   onChangeText={setEmail}
                   autoCapitalize="none"
@@ -230,7 +272,7 @@ export const EmployeesScreen = ({ navigation }: Props) => {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="Временный пароль"
+                  placeholder={isAdmin ? 'Пароль HR' : 'Временный пароль'}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
@@ -238,7 +280,9 @@ export const EmployeesScreen = ({ navigation }: Props) => {
                   placeholderTextColor={colors.textMuted}
                 />
                 <Pressable style={styles.createBtn} onPress={() => void onProvision()} disabled={isProvisioning}>
-                  <Text style={styles.createBtnText}>{isProvisioning ? 'Создаю...' : 'Создать и выдать доступ'}</Text>
+                  <Text style={styles.createBtnText}>
+                    {isProvisioning ? 'Создаю...' : isAdmin ? 'Создать HR' : 'Создать и выдать доступ'}
+                  </Text>
                 </Pressable>
               </View>
             ) : null}
@@ -291,7 +335,7 @@ export const EmployeesScreen = ({ navigation }: Props) => {
           </>
         )}
 
-        <Modal visible={isDeptPickerOpen} transparent animationType="fade" onRequestClose={closeDeptPicker}>
+        <Modal visible={isDeptPickerOpen && !isAdmin} transparent animationType="fade" onRequestClose={closeDeptPicker}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
               <View style={styles.modalHeader}>

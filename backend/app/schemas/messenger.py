@@ -53,6 +53,7 @@ class MessageResponse(BaseModel):
     message_type: MessageType = Field(..., alias="messageType")
     body: str | None = None
     voice_url: str | None = Field(default=None, alias="voiceUrl")
+    voice_duration_seconds: int | None = Field(default=None, alias="voiceDurationSeconds")
     created_at: datetime = Field(..., alias="createdAt")
 
 

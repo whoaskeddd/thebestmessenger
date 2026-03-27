@@ -121,6 +121,19 @@ export type EmployeeProvisionPayload = {
   department_ids?: string[];
 };
 
+export type AdminCreateUserPayload = {
+  email: string;
+  password: string;
+  role: 'employee' | 'hr';
+};
+
+export type AdminCreatedUser = {
+  id: string;
+  email: string;
+  role: UserRole;
+  is_active: boolean;
+};
+
 export type LeaveRequestType = 'vacation' | 'day_off' | 'sick';
 export type LeaveRequestStatus = 'submitted' | 'approved' | 'rejected' | 'canceled';
 
@@ -186,5 +199,6 @@ export type ChatMessage = {
   messageType: ChatMessageType;
   body?: string | null;
   voiceUrl?: string | null;
+  voiceDurationSeconds?: number | null;
   createdAt: string;
 };

@@ -7,7 +7,9 @@ import pytest
 from app.core.config import Settings
 from app.core.security import decode_access_token
 from app.domain.auth.exceptions import (
+    BootstrapAdminConfigError,
     EmailAlreadyExists,
+    ForbiddenUserCreation,
     InvalidCredentials,
     InvalidCurrentPassword,
     InvalidRefreshToken,
@@ -191,3 +193,72 @@ async def test_change_password_invalid_current_password() -> None:
             current_password="wrong-password",
             new_password="new-password-123",
         )
+
+
+@pytest.mark.asyncio
+async def test_admin_can_create_hr_user() -> None:
+    users = FakeUsersRepo()
+    refresh = FakeRefreshRepo()
+    settings = Settings(JWT_SECRET_KEY="test", JWT_ALGORITHM="HS256")
+    service = AuthService(users=users, refresh_sessions=refresh, settings=settings)
+
+    created = await service.create_user_by_admin(
+        actor_role="admin",
+        email="hr@example.com",
+        password="Password123",
+        role="hr",
+    )
+
+    assert created.email == "hr@example.com"
+    assert created.role == "hr"
+
+
+@pytest.mark.asyncio
+async def test_non_admin_cannot_create_users() -> None:
+    users = FakeUsersRepo()
+    refresh = FakeRefreshRepo()
+    settings = Settings(JWT_SECRET_KEY="test", JWT_ALGORITHM="HS256")
+    service = AuthService(users=users, refresh_sessions=refresh, settings=settings)
+
+    with pytest.raises(ForbiddenUserCreation):
+        await service.create_user_by_admin(
+            actor_role="employee",
+            email="hr@example.com",
+            password="Password123",
+            role="hr",
+        )
+
+
+@pytest.mark.asyncio
+async def test_bootstrap_admin_created_from_settings() -> None:
+    users = FakeUsersRepo()
+    refresh = FakeRefreshRepo()
+    settings = Settings(
+        JWT_SECRET_KEY="test",
+        JWT_ALGORITHM="HS256",
+        BOOTSTRAP_ADMIN_EMAIL="admin@example.com",
+        BOOTSTRAP_ADMIN_PASSWORD="Password123",
+    )
+    service = AuthService(users=users, refresh_sessions=refresh, settings=settings)
+
+    created = await service.ensure_bootstrap_admin()
+    assert created is True
+
+    admin = await users.get_by_email("admin@example.com")
+    assert admin is not None
+    assert admin.role == "admin"
+
+
+@pytest.mark.asyncio
+async def test_bootstrap_admin_requires_both_email_and_password() -> None:
+    users = FakeUsersRepo()
+    refresh = FakeRefreshRepo()
+    settings = Settings(
+        JWT_SECRET_KEY="test",
+        JWT_ALGORITHM="HS256",
+        BOOTSTRAP_ADMIN_EMAIL="admin@example.com",
+    )
+    service = AuthService(users=users, refresh_sessions=refresh, settings=settings)
+
+    with pytest.raises(BootstrapAdminConfigError):
+        await service.ensure_bootstrap_admin()

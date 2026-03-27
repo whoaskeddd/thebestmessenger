@@ -98,6 +98,7 @@ async def _message_response(session: AsyncSession, msg) -> MessageResponse:
         messageType=msg.message_type,
         body=msg.body,
         voiceUrl=voice_url,
+        voiceDurationSeconds=msg.voice_duration_seconds,
         createdAt=msg.created_at,
     )
 

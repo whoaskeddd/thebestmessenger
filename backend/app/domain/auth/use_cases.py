@@ -12,13 +12,16 @@ from app.core.security import (
     verify_password,
 )
 from app.domain.auth.exceptions import (
+    BootstrapAdminConfigError,
     EmailAlreadyExists,
+    ForbiddenUserCreation,
     InactiveUser,
     InvalidCurrentPassword,
     InvalidCredentials,
     InvalidRefreshToken,
+    InvalidUserRole,
 )
-from app.domain.auth.repositories import RefreshSessionRepository, UserRepository
+from app.domain.auth.repositories import RefreshSessionRepository, UserDTO, UserRepository
 
 
 def _utcnow() -> datetime:
@@ -62,6 +65,54 @@ class AuthService:
         await self._refresh_sessions.create(user_id=user.id, token_hash=refresh_hash, expires_at=expires_at)
 
         return {"access_token": access, "refresh_token": refresh_plain}
+
+    async def create_user_by_admin(
+        self,
+        *,
+        actor_role: str,
+        email: str,
+        password: str,
+        role: str,
+    ) -> UserDTO:
+        if actor_role != "admin":
+            raise ForbiddenUserCreation()
+        if role not in {"employee", "hr"}:
+            raise InvalidUserRole()
+
+        email_norm = email.lower().strip()
+        existing = await self._users.get_by_email(email_norm)
+        if existing is not None:
+            raise EmailAlreadyExists()
+
+        return await self._users.create_user(
+            email=email_norm,
+            password_hash=hash_password(password),
+            role=role,
+            is_active=True,
+        )
+
+    async def ensure_bootstrap_admin(self) -> bool:
+        email = (self._settings.bootstrap_admin_email or "").strip().lower()
+        password = (self._settings.bootstrap_admin_password or "").strip()
+
+        if not email and not password:
+            return False
+        if not email or not password:
+            raise BootstrapAdminConfigError()
+
+        existing = await self._users.get_by_email(email)
+        if existing is not None:
+            if existing.role != "admin":
+                raise BootstrapAdminConfigError()
+            return False
+
+        await self._users.create_user(
+            email=email,
+            password_hash=hash_password(password),
+            role="admin",
+            is_active=True,
+        )
+        return True
 
     async def login(self, *, email: str, password: str) -> dict[str, str]:
         user = await self._users.get_by_email(email)

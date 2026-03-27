@@ -28,6 +28,8 @@ services:
       JWT_ALGORITHM: ${JWT_ALGORITHM:?set JWT_ALGORITHM in .env}
       ACCESS_TOKEN_TTL_MINUTES: ${ACCESS_TOKEN_TTL_MINUTES:?set ACCESS_TOKEN_TTL_MINUTES in .env}
       REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:?set REFRESH_TOKEN_TTL_DAYS in .env}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       MEDIA_ROOT: ${MEDIA_ROOT:?set MEDIA_ROOT in .env}
     ports:
       - "8000:8000"
@@ -36,31 +38,6 @@ services:
         condition: service_healthy
     volumes:
       - media_data:/data/media
-
-  db-load-test:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    environment:
-      APP_NAME: ${APP_NAME:?set APP_NAME in .env}
-      DEBUG: ${DEBUG:?set DEBUG in .env}
-      LOG_LEVEL: ${LOG_LEVEL:?set LOG_LEVEL in .env}
-      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?set JWT_SECRET_KEY in .env}
-      JWT_ALGORITHM: ${JWT_ALGORITHM:?set JWT_ALGORITHM in .env}
-      ACCESS_TOKEN_TTL_MINUTES: ${ACCESS_TOKEN_TTL_MINUTES:?set ACCESS_TOKEN_TTL_MINUTES in .env}
-      REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:?set REFRESH_TOKEN_TTL_DAYS in .env}
-      MEDIA_ROOT: ${MEDIA_ROOT:?set MEDIA_ROOT in .env}
-    depends_on:
-      db:
-        condition: service_healthy
-    command:
-      [
-        "sh",
-        "-c",
-        "uv run alembic -c alembic.ini upgrade head && uv run python DB_load_test.py",
-      ]
-    restart: "no"
 
   frontend:
     build:

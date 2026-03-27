@@ -7,13 +7,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import DbSessionDep
-from app.api.auth.security import get_current_user
+from app.api.auth.security import get_current_user, require_role
 from app.domain.auth.exceptions import (
     EmailAlreadyExists,
+    ForbiddenUserCreation,
     InactiveUser,
     InvalidCurrentPassword,
     InvalidCredentials,
     InvalidRefreshToken,
+    InvalidUserRole,
 )
 from app.domain.auth.use_cases import AuthService
 from app.infrastructure.auth.repositories import (
@@ -21,12 +23,14 @@ from app.infrastructure.auth.repositories import (
     SQLAlchemyUserRepository,
 )
 from app.schemas.auth import (
+    AdminCreateUserRequest,
     ChangePasswordRequest,
     LoginRequest,
     MeResponse,
     RefreshRequest,
     RegisterRequest,
     TokenPairResponse,
+    UserResponse,
 )
 
 
@@ -109,3 +113,43 @@ async def change_password(
     except InvalidCurrentPassword as exc:
         await session.rollback()
         raise HTTPException(status_code=401, detail="invalid current password") from exc
+
+
+@router.post(
+    "/admin/users",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_role("admin"))],
+)
+async def admin_create_user(
+    payload: AdminCreateUserRequest,
+    session: DbSessionDep,
+    user=Depends(get_current_user),
+) -> UserResponse:
+    service = _service(session)
+    try:
+        created = await service.create_user_by_admin(
+            actor_role=user.role,
+            email=str(payload.email),
+            password=payload.password,
+            role=payload.role,
+        )
+        await session.commit()
+        return UserResponse(
+            id=created.id,
+            email=created.email,
+            role=created.role,
+            is_active=created.is_active,
+        )
+    except ForbiddenUserCreation as exc:
+        await session.rollback()
+        raise HTTPException(status_code=403, detail="forbidden") from exc
+    except InvalidUserRole as exc:
+        await session.rollback()
+        raise HTTPException(status_code=422, detail="invalid role") from exc
+    except EmailAlreadyExists as exc:
+        await session.rollback()
+        raise HTTPException(status_code=409, detail="email already exists") from exc
+    except IntegrityError as exc:
+        await session.rollback()
+        raise HTTPException(status_code=409, detail="email already exists") from exc

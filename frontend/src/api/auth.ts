@@ -39,11 +39,15 @@ function parseErrorMessage(body: unknown): string | null {
 }
 
 const request = async <T>(path: string, init: RequestInitEx = {}): Promise<T> => {
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...(init.skipAuth ? {} : await getAuthHeader()),
-    ...(init.headers ?? {}),
-  };
+  const headers = new Headers(init.headers ?? {});
+  if (!init.skipAuth) {
+    const authHeaders = await getAuthHeader();
+    const auth = new Headers(authHeaders);
+    auth.forEach((value, key) => headers.set(key, value));
+  }
+  if (!(init.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,

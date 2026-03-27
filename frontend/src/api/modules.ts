@@ -3,6 +3,8 @@ import type {
   Chat,
   ChatMessage,
   AnnouncementCreatePayload,
+  AdminCreateUserPayload,
+  AdminCreatedUser,
   Department,
   DepartmentCreatePayload,
   DepartmentUpdatePayload,
@@ -123,6 +125,13 @@ export const modulesApi = {
       position: payload.position ?? null,
       hire_date: payload.hire_date ?? null,
       department_ids: payload.department_ids ?? [],
+    });
+  },
+
+  async createUserByAdmin(payload: AdminCreateUserPayload): Promise<AdminCreatedUser> {
+    return authApi.request<AdminCreatedUser>('/auth/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
   },
 
@@ -286,6 +295,26 @@ export const modulesApi = {
     return authApi.request<ChatMessage>(`/chats/${chatId}/messages`, {
       method: 'POST',
       body: JSON.stringify({ body }),
+    });
+  },
+
+  async sendVoiceMessage(
+    chatId: string,
+    payload: { uri: string; durationSeconds?: number; mimeType?: string; fileName?: string },
+  ): Promise<ChatMessage> {
+    const form = new FormData();
+    form.append('file', {
+      uri: payload.uri,
+      name: payload.fileName ?? 'voice-message.m4a',
+      type: payload.mimeType ?? 'audio/m4a',
+    } as any);
+    if (typeof payload.durationSeconds === 'number') {
+      form.append('duration_seconds', String(payload.durationSeconds));
+    }
+
+    return authApi.request<ChatMessage>(`/chats/${chatId}/voice`, {
+      method: 'POST',
+      body: form,
     });
   },
 

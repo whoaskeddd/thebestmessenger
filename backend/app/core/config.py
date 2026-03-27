@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     refresh_token_ttl_days: int = Field(
         default=30, validation_alias="REFRESH_TOKEN_TTL_DAYS"
     )
+    bootstrap_admin_email: str | None = Field(
+        default=None, validation_alias="BOOTSTRAP_ADMIN_EMAIL"
+    )
+    bootstrap_admin_password: str | None = Field(
+        default=None, validation_alias="BOOTSTRAP_ADMIN_PASSWORD"
+    )
 
     media_root: str = Field(default="/data/media", validation_alias="MEDIA_ROOT")
     cors_allow_origins: list[str] = Field(

@@ -23,3 +23,15 @@ class InvalidRefreshToken(AuthError):
 
 class InvalidCurrentPassword(AuthError):
     pass
+
+
+class ForbiddenUserCreation(AuthError):
+    pass
+
+
+class InvalidUserRole(AuthError):
+    pass
+
+
+class BootstrapAdminConfigError(AuthError):
+    pass

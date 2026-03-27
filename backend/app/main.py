@@ -4,8 +4,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app.api.auth.bootstrap import ensure_bootstrap_admin
 from app.core.config import get_settings
-from app.core.db import dispose_engine
+from app.core.db import create_engine, create_sessionmaker, dispose_engine
+from app.domain.auth.exceptions import BootstrapAdminConfigError
 from app.core.logging import configure_logging
 from app.api.auth.router import router as auth_router
 from app.api.employees.router import router as employees_router
@@ -41,6 +43,18 @@ def create_app() -> FastAPI:
     @app.on_event("shutdown")
     async def _shutdown() -> None:
         await dispose_engine()
+
+    @app.on_event("startup")
+    async def _startup() -> None:
+        sessionmaker = create_sessionmaker(create_engine())
+        async with sessionmaker() as session:
+            try:
+                await ensure_bootstrap_admin(session)
+            except BootstrapAdminConfigError as exc:
+                raise RuntimeError(
+                    "Invalid bootstrap admin config. Set both BOOTSTRAP_ADMIN_EMAIL and "
+                    "BOOTSTRAP_ADMIN_PASSWORD, and make sure that existing user has role=admin."
+                ) from exc
 
     @app.get("/health")
     async def health() -> dict[str, str]:

@@ -36,7 +36,6 @@ export const AppNavigator = () => {
           <Stack.Screen name="Dashboard" component={DashboardScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
-          <Stack.Screen name="Profile" component={ProfileScreen} />
           <Stack.Screen name="Employees" component={EmployeesScreen} />
           <Stack.Screen name="EmployeeCard" component={EmployeeCardScreen} />
           <Stack.Screen name="Leaves" component={LeavesScreen} />
