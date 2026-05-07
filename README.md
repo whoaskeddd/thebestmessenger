@@ -1,8 +1,7 @@
 ﻿# TheBestMessenger
 
-Демо-видео: [thebestmessenger.mp4](https://raw.githubusercontent.com/whoaskeddd/portfolio/main/assets/videos/thebestmessenger.mp4)
+Демо-видео: [thebestmessenger.mp4](https://github.com/whoaskeddd/portfolio/blob/main/assets/videos/thebestmessenger.mp4)
 
-![TheBestMessenger Demo](https://raw.githubusercontent.com/whoaskeddd/portfolio/main/assets/videos/thebestmessenger.mp4)
 
 ## О проекте
 TheBestMessenger — заготовка мессенджера. Сейчас в репозитории реализован минимальный backend на FastAPI, frontend пока отсутствует.
@@ -48,3 +47,4 @@ Frontend в текущем состоянии проекта отсутству�
 - Добавить frontend (React/React Native).
 - Добавить модели пользователей, чатов и сообщений.
 - Добавить авторизацию и REST/WebSocket API.
+
