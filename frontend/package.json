@@ -1,0 +1,39 @@
+{
+  "name": "thebestmessenger-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=18 <24"
+  },
+  "main": "index.ts",
+  "scripts": {
+    "start": "RCT_METRO_PORT=8081 expo start",
+    "web": "expo start --web",
+    "android": "RCT_METRO_PORT=8081 expo start --android",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "~5.0.5",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-navigation/native": "7.2.0",
+    "@react-navigation/native-stack": "7.14.7",
+    "axios": "^1.8.4",
+    "expo": "53.0.27",
+    "expo-asset": "~11.1.7",
+    "expo-av": "~15.1.7",
+    "expo-linear-gradient": "~14.1.5",
+    "expo-status-bar": "~2.2.3",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-native": "0.79.0",
+    "react-native-safe-area-context": "5.4.1",
+    "react-native-screens": "~4.11.1",
+    "react-native-svg": "15.11.2",
+    "react-native-svg-transformer": "^1.5.3",
+    "react-native-web": "^0.20.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.0.10",
+    "typescript": "~5.8.3"
+  }
+}

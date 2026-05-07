@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "HR Connect",
+    "slug": "hr-connect",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Приложению нужен доступ к микрофону для записи голосовых сообщений."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF"
+      },
+      "permissions": [
+        "RECORD_AUDIO"
+      ],
+      "edgeToEdgeEnabled": true,
+      "package": "com.thebestmessenger.hrconnect"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    }
+  }
+}
