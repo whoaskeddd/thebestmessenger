@@ -92,91 +92,6 @@ async def list_leave_requests(
     return [_req_response(i) for i in items]
 
 
-@router.get("/{request_id}", response_model=LeaveRequestResponse)
-async def get_leave_request(request_id: uuid.UUID, session: DbSessionDep, user=Depends(get_current_user)):
-    try:
-        req = await _service(session).get(request_id, actor_user_id=user.id, actor_role=user.role)
-        return _req_response(req)
-    except NotFound as exc:
-        raise HTTPException(status_code=404, detail="leave request not found") from exc
-    except Forbidden as exc:
-        raise HTTPException(status_code=403, detail="forbidden") from exc
-
-
-@router.get("/{request_id}/history", response_model=list[LeaveRequestEventResponse])
-async def history(request_id: uuid.UUID, session: DbSessionDep, user=Depends(get_current_user)):
-    try:
-        events = await _service(session).history(request_id, actor_user_id=user.id, actor_role=user.role)
-        return [_event_response(e) for e in events]
-    except NotFound as exc:
-        raise HTTPException(status_code=404, detail="leave request not found") from exc
-    except Forbidden as exc:
-        raise HTTPException(status_code=403, detail="forbidden") from exc
-
-
-@router.post(
-    "/{request_id}/approve",
-    response_model=LeaveRequestResponse,
-    dependencies=[Depends(require_role("admin", "hr"))],
-)
-async def approve(request_id: uuid.UUID, payload: LeaveRequestAction, session: DbSessionDep, user=Depends(get_current_user)):
-    try:
-        req = await _service(session).approve(
-            request_id,
-            actor_user_id=user.id,
-            actor_role=user.role,
-            hr_comment=payload.hr_comment,
-        )
-        await session.commit()
-        return _req_response(req)
-    except NotFound as exc:
-        await session.rollback()
-        raise HTTPException(status_code=404, detail="leave request not found") from exc
-    except InvalidTransition as exc:
-        await session.rollback()
-        raise HTTPException(status_code=409, detail="invalid status transition") from exc
-
-
-@router.post(
-    "/{request_id}/reject",
-    response_model=LeaveRequestResponse,
-    dependencies=[Depends(require_role("admin", "hr"))],
-)
-async def reject(request_id: uuid.UUID, payload: LeaveRequestReject, session: DbSessionDep, user=Depends(get_current_user)):
-    try:
-        req = await _service(session).reject(
-            request_id,
-            actor_user_id=user.id,
-            actor_role=user.role,
-            hr_comment=payload.hr_comment,
-        )
-        await session.commit()
-        return _req_response(req)
-    except NotFound as exc:
-        await session.rollback()
-        raise HTTPException(status_code=404, detail="leave request not found") from exc
-    except InvalidTransition as exc:
-        await session.rollback()
-        raise HTTPException(status_code=409, detail="invalid status transition") from exc
-
-
-@router.post("/{request_id}/cancel", response_model=LeaveRequestResponse)
-async def cancel(request_id: uuid.UUID, session: DbSessionDep, user=Depends(get_current_user)):
-    try:
-        req = await _service(session).cancel(request_id, actor_user_id=user.id, actor_role=user.role)
-        await session.commit()
-        return _req_response(req)
-    except NotFound as exc:
-        await session.rollback()
-        raise HTTPException(status_code=404, detail="leave request not found") from exc
-    except Forbidden as exc:
-        await session.rollback()
-        raise HTTPException(status_code=403, detail="forbidden") from exc
-    except InvalidTransition as exc:
-        await session.rollback()
-        raise HTTPException(status_code=409, detail="invalid status transition") from exc
-
-
 @router.get(
     "/unread-count",
     response_model=CountResponse,
@@ -205,3 +120,88 @@ async def mark_read(session: DbSessionDep, user=Depends(get_current_user)) -> Co
     except Forbidden as exc:
         await session.rollback()
         raise HTTPException(status_code=403, detail="forbidden") from exc
+
+
+@router.get("/{request_id:uuid}", response_model=LeaveRequestResponse)
+async def get_leave_request(request_id: uuid.UUID, session: DbSessionDep, user=Depends(get_current_user)):
+    try:
+        req = await _service(session).get(request_id, actor_user_id=user.id, actor_role=user.role)
+        return _req_response(req)
+    except NotFound as exc:
+        raise HTTPException(status_code=404, detail="leave request not found") from exc
+    except Forbidden as exc:
+        raise HTTPException(status_code=403, detail="forbidden") from exc
+
+
+@router.get("/{request_id:uuid}/history", response_model=list[LeaveRequestEventResponse])
+async def history(request_id: uuid.UUID, session: DbSessionDep, user=Depends(get_current_user)):
+    try:
+        events = await _service(session).history(request_id, actor_user_id=user.id, actor_role=user.role)
+        return [_event_response(e) for e in events]
+    except NotFound as exc:
+        raise HTTPException(status_code=404, detail="leave request not found") from exc
+    except Forbidden as exc:
+        raise HTTPException(status_code=403, detail="forbidden") from exc
+
+
+@router.post(
+    "/{request_id:uuid}/approve",
+    response_model=LeaveRequestResponse,
+    dependencies=[Depends(require_role("admin", "hr"))],
+)
+async def approve(request_id: uuid.UUID, payload: LeaveRequestAction, session: DbSessionDep, user=Depends(get_current_user)):
+    try:
+        req = await _service(session).approve(
+            request_id,
+            actor_user_id=user.id,
+            actor_role=user.role,
+            hr_comment=payload.hr_comment,
+        )
+        await session.commit()
+        return _req_response(req)
+    except NotFound as exc:
+        await session.rollback()
+        raise HTTPException(status_code=404, detail="leave request not found") from exc
+    except InvalidTransition as exc:
+        await session.rollback()
+        raise HTTPException(status_code=409, detail="invalid status transition") from exc
+
+
+@router.post(
+    "/{request_id:uuid}/reject",
+    response_model=LeaveRequestResponse,
+    dependencies=[Depends(require_role("admin", "hr"))],
+)
+async def reject(request_id: uuid.UUID, payload: LeaveRequestReject, session: DbSessionDep, user=Depends(get_current_user)):
+    try:
+        req = await _service(session).reject(
+            request_id,
+            actor_user_id=user.id,
+            actor_role=user.role,
+            hr_comment=payload.hr_comment,
+        )
+        await session.commit()
+        return _req_response(req)
+    except NotFound as exc:
+        await session.rollback()
+        raise HTTPException(status_code=404, detail="leave request not found") from exc
+    except InvalidTransition as exc:
+        await session.rollback()
+        raise HTTPException(status_code=409, detail="invalid status transition") from exc
+
+
+@router.post("/{request_id:uuid}/cancel", response_model=LeaveRequestResponse)
+async def cancel(request_id: uuid.UUID, session: DbSessionDep, user=Depends(get_current_user)):
+    try:
+        req = await _service(session).cancel(request_id, actor_user_id=user.id, actor_role=user.role)
+        await session.commit()
+        return _req_response(req)
+    except NotFound as exc:
+        await session.rollback()
+        raise HTTPException(status_code=404, detail="leave request not found") from exc
+    except Forbidden as exc:
+        await session.rollback()
+        raise HTTPException(status_code=403, detail="forbidden") from exc
+    except InvalidTransition as exc:
+        await session.rollback()
+        raise HTTPException(status_code=409, detail="invalid status transition") from exc

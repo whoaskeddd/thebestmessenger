@@ -7,9 +7,9 @@
   },
   "main": "index.ts",
   "scripts": {
-    "start": "RCT_METRO_PORT=8081 expo start",
+    "start": "expo start --port 8081",
     "web": "expo start --web",
-    "android": "RCT_METRO_PORT=8081 expo start --android",
+    "android": "expo start --android --port 8081",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
